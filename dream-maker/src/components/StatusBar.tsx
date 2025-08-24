@@ -1,6 +1,6 @@
 import { useDesignStore } from '../store/designStore';
 import { useUIStore } from '../store/uiStore';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 
 export function StatusBar() {
   const { activeTool, selectedItems } = useDesignStore();

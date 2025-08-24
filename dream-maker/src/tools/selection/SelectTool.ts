@@ -1,13 +1,11 @@
 import paper from 'paper';
 import { DrawingTool } from '../base/DrawingTool';
-import type { ToolConfig, ToolContext } from '../base/DrawingTool';
 import { selectionManager } from '../../utils/SelectionManager';
 
 export class SelectTool extends DrawingTool {
   private hitItem: paper.Item | null = null;
   private hitObjectId: string | null = null;
   private isMarqueeSelecting: boolean = false;
-  private dragStartPoint: paper.Point | null = null;
 
   protected setupTool(): void {
     this.tool.onMouseDown = this.onMouseDown.bind(this);
@@ -16,7 +14,6 @@ export class SelectTool extends DrawingTool {
   }
 
   protected onMouseDown(event: paper.ToolEvent): void {
-    this.dragStartPoint = event.point;
     
     const hitResult = paper.project.hitTest(event.point, {
       fill: true,
@@ -34,7 +31,7 @@ export class SelectTool extends DrawingTool {
     this.hitItem = item;
     
     this.hitObjectId = Object.entries(this.context.objects)
-      .find(([_, obj]) => obj.paperItem === item)?.[0] || null;
+      .find(([, obj]) => obj.paperItem === item)?.[0] || null;
     
     if (this.hitObjectId) {
       if (event.modifiers.shift) {
@@ -83,7 +80,7 @@ export class SelectTool extends DrawingTool {
   private moveSelectedObjects(delta: paper.Point): void {
     const selectedObjects = Object.entries(this.context.objects)
       .filter(([id]) => this.context.selection.selectedIds.includes(id))
-      .map(([_, obj]) => obj);
+      .map(([, obj]) => obj);
     
     selectedObjects.forEach(obj => {
       obj.paperItem.position = obj.paperItem.position.add(delta);
@@ -97,7 +94,6 @@ export class SelectTool extends DrawingTool {
     
     this.hitItem = null;
     this.hitObjectId = null;
-    this.dragStartPoint = null;
   }
 
   private completeMarqueeSelection(event: paper.ToolEvent): void {

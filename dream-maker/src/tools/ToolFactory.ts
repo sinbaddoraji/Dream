@@ -1,4 +1,5 @@
-import { DrawingTool, ToolConfig, ToolContext } from './base/DrawingTool';
+import { DrawingTool } from './base/DrawingTool';
+import type { ToolConfig, ToolContext } from './base/DrawingTool';
 import { SelectTool } from './selection/SelectTool';
 import { RectangleTool } from './shapes/RectangleTool';
 import { EllipseTool } from './shapes/EllipseTool';
@@ -32,7 +33,7 @@ export type ToolType =
   | 'hand';
 
 export class ToolFactory {
-  private static toolRegistry: Map<ToolType, any> = new Map([
+  private static toolRegistry: Map<ToolType, unknown> = new Map<ToolType, unknown>([
     ['select', SelectTool],
     ['rectangle', RectangleTool],
     ['ellipse', EllipseTool],
@@ -62,10 +63,10 @@ export class ToolFactory {
       return null;
     }
 
-    return new (ToolClass as any)(config, context);
+    return new (ToolClass as unknown as new (config: ToolConfig, context: ToolContext) => DrawingTool)(config, context);
   }
 
-  public static registerTool(type: ToolType, toolClass: any): void {
+  public static registerTool(type: ToolType, toolClass: unknown): void {
     this.toolRegistry.set(type, toolClass);
   }
 

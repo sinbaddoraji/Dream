@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useDesignStore, type Tool, type ToolConfig } from '../../store/designStore';
 import { useUIStore, type DockPosition } from '../../store/uiStore';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 import { ToolButton } from './ToolButton';
 import { ColorPicker } from './ColorPicker';
 import { ToolOptions } from './ToolOptions';
@@ -93,7 +93,7 @@ export function DockableToolbar({
   
   const [isDragging, setIsDragging] = useState(false);
   const [dragHoverZone, setDragHoverZone] = useState<DockPosition | null>(null);
-  const rndRef = useRef<any>(null);
+  const rndRef = useRef<InstanceType<typeof Rnd> | null>(null);
 
   const isFloating = toolbar.position === 'floating';
   const isDocked = !isFloating;
@@ -129,7 +129,7 @@ export function DockableToolbar({
     setIsDragging(true);
   }, []);
 
-  const handleDrag = useCallback((_e: any, data: any) => {
+  const handleDrag = useCallback((_e: unknown, data: { x: number; y: number }) => {
     const { x, y } = data;
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
@@ -149,7 +149,7 @@ export function DockableToolbar({
     setDragHoverZone(hoverZone);
   }, []);
 
-  const handleDragStop = useCallback((_e: any, data: any) => {
+  const handleDragStop = useCallback((_e: unknown, data: { x: number; y: number }) => {
     setIsDragging(false);
     const { x, y } = data;
     

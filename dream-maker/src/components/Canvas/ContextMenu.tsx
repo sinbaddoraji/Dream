@@ -14,7 +14,7 @@ import {
   ChevronsDown
 } from 'lucide-react';
 import { useDesignStore } from '../../store/designStore';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 interface ContextMenuProps {
   x: number;
@@ -26,7 +26,6 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   const { theme } = useTheme();
   const {
     selection,
-    objects,
     groups,
     getSelectedObjects,
     createGroup,
@@ -47,8 +46,6 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   const hasSelection = selectedObjects.length > 0;
   const canGroup = selectedObjects.length > 1;
   const hasLocked = selectedObjects.some(obj => obj.locked);
-  const hasUnlocked = selectedObjects.some(obj => !obj.locked);
-  const hasVisible = selectedObjects.some(obj => obj.visible);
   const hasHidden = selectedObjects.some(obj => !obj.visible);
 
   // Check if any selected objects are part of a group that can be ungrouped
@@ -180,7 +177,7 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     }
   ];
 
-  const handleItemClick = (item: any) => {
+  const handleItemClick = (item: { disabled?: boolean; action?: () => void }) => {
     if (!item.disabled && item.action) {
       item.action();
     }
@@ -188,7 +185,7 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
 
   // Close menu when clicking outside
   React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       onClose();
     };
 

@@ -81,7 +81,7 @@ export function useKeyboardShortcuts() {
               createGroup();
             }
             return;
-          case 'l':
+          case 'l': {
             event.preventDefault();
             const selectedObjects = getSelectedObjects();
             const hasLocked = selectedObjects.some(obj => obj.locked);
@@ -91,7 +91,8 @@ export function useKeyboardShortcuts() {
               lockObjects(selection.selectedIds);
             }
             return;
-          case 'h':
+          }
+          case 'h': {
             event.preventDefault();
             const selectedObjectsForHide = getSelectedObjects();
             const hasHidden = selectedObjectsForHide.some(obj => !obj.visible);
@@ -101,6 +102,7 @@ export function useKeyboardShortcuts() {
               hideObjects(selection.selectedIds);
             }
             return;
+          }
           case ']':
             event.preventDefault();
             if (event.shiftKey) {

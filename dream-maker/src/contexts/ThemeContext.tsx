@@ -1,25 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Theme, ThemeName } from '../types/theme';
 import { lightTheme, darkTheme, highContrastTheme } from '../themes';
-
-interface ThemeContextType {
-  theme: Theme;
-  themeName: ThemeName;
-  setTheme: (themeName: ThemeName) => void;
-  toggleTheme: () => void;
-  availableThemes: { name: ThemeName; displayName: string }[];
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-};
+import { ThemeContext, type ThemeContextType } from './ThemeContextType';
 
 const themes: Record<ThemeName, Theme> = {
   light: lightTheme,
@@ -39,7 +22,7 @@ interface ThemeProviderProps {
   defaultTheme?: ThemeName;
 }
 
-export const ThemeProvider = ({ children, defaultTheme = 'light' }: ThemeProviderProps) => {
+const ThemeProvider = ({ children, defaultTheme = 'light' }: ThemeProviderProps) => {
   const [themeName, setThemeName] = useState<ThemeName>(() => {
     // Try to load theme from localStorage
     const savedTheme = localStorage.getItem('dream-maker-theme') as ThemeName;
@@ -122,7 +105,7 @@ export const ThemeProvider = ({ children, defaultTheme = 'light' }: ThemeProvide
     root.style.setProperty('--radius-lg', theme.borderRadius.lg);
     root.style.setProperty('--radius-full', theme.borderRadius.full);
     
-  }, [theme]);
+  }, [theme, themeName]);
 
   const setTheme = (newThemeName: ThemeName) => {
     setThemeName(newThemeName);
@@ -148,3 +131,5 @@ export const ThemeProvider = ({ children, defaultTheme = 'light' }: ThemeProvide
     </ThemeContext.Provider>
   );
 };
+
+export default ThemeProvider;

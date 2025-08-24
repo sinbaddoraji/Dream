@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SketchPicker } from 'react-color';
-import { Palette } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 interface ColorPickerProps {
   fillColor: string;
@@ -47,7 +46,7 @@ export function ColorPicker({
     setShowPicker(showPicker === type ? null : type);
   };
 
-  const handleColorChange = (color: any) => {
+  const handleColorChange = (color: { hex: string }) => {
     const hexColor = color.hex;
     if (showPicker === 'fill') {
       onFillColorChange(hexColor);

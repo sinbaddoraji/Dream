@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 import type { ToolConfig } from '../../store/designStore';
 
 interface ToolButtonProps {

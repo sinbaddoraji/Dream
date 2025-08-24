@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 import { useDesignStore } from '../../store/designStore';
 import { CanvasService } from '../../services/CanvasService';
 import type { ToolType } from '../../tools/ToolFactory';
@@ -9,7 +9,7 @@ interface CanvasContainerProps {
   activeTool: string;
   fillColor: string;
   strokeColor: string;
-  onSelectionChange?: (items: any[]) => void;
+  onSelectionChange?: (items: paper.Item[]) => void;
 }
 
 export function CanvasContainer({ 
@@ -102,7 +102,7 @@ export function CanvasContainer({
         />
         
         {activeTool === 'select' && (
-          <SelectionOverlay canvasRef={canvasRef} />
+          <SelectionOverlay />
         )}
       </div>
     </div>

@@ -33,7 +33,7 @@ export class ShapeRegistry {
       createShape: (from, to, options) => {
         const rect = new paper.Path.Rectangle(from, to);
         if (options?.cornerRadius) {
-          rect.bounds.size = rect.bounds.size;
+          // Apply corner radius when supported by Paper.js
         }
         return rect;
       }
@@ -246,13 +246,13 @@ export class ShapeRegistry {
     
     if (options) {
       if (options.fillColor && 'fillColor' in item) {
-        (item as any).fillColor = new paper.Color(options.fillColor);
+        (item as paper.Path).fillColor = new paper.Color(options.fillColor);
       }
       if (options.strokeColor && 'strokeColor' in item) {
-        (item as any).strokeColor = new paper.Color(options.strokeColor);
+        (item as paper.Path).strokeColor = new paper.Color(options.strokeColor);
       }
       if (options.strokeWidth && 'strokeWidth' in item) {
-        (item as any).strokeWidth = options.strokeWidth;
+        (item as paper.Path).strokeWidth = options.strokeWidth;
       }
     }
     

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
-import { useDesignStore } from '../store/designStore';
-import { useTheme } from '../contexts/ThemeContext';
+import { useDesignStore, type Tool } from '../store/designStore';
+import { useTheme } from '../hooks/useTheme';
 
 interface DragOverEvent extends React.DragEvent<HTMLDivElement> {
   dataTransfer: DataTransfer;
@@ -42,7 +42,7 @@ export function RightSidebar() {
   };
 
   const handleToolClick = (toolId: string) => {
-    setActiveTool(toolId as any);
+    setActiveTool(toolId as Tool);
   };
 
   const handleRemoveTool = (toolId: string, e: React.MouseEvent) => {

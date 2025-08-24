@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import paper from 'paper';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useDesignStore, CanvasObject } from '../../store/designStore';
+import { useTheme } from '../../hooks/useTheme';
+import { useDesignStore } from '../../store/designStore';
+import type { CanvasObject } from '../../store/designStore';
 import { SelectionOverlay } from './SelectionOverlay';
 import { selectionManager } from '../../utils/SelectionManager';
 
@@ -32,7 +33,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
   const currentToolRef = useRef<paper.Tool | null>(null);
   const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
   const [, setLassoPath] = useState<paper.Path | null>(null);
-  const [cropOverlay, setCropOverlay] = useState<paper.Path.Rectangle | null>(null);
+  const [, setCropOverlay] = useState<paper.Path.Rectangle | null>(null);
   
   // Helper function to get cursor based on tool
   const getCursorForTool = (tool: string): string => {
@@ -218,7 +219,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
 
     currentToolRef.current = tool;
     tool.activate();
-  }, [activeTool, fillColor, strokeColor, strokeWidth]);
+  }, [activeTool, fillColor, strokeColor, strokeWidth, objects, selection, addObject, deleteObjects, selectObjects, addToSelection, clearSelection, onSelectionChange, setFillColor, setStrokeColor]);
 
   const createSelectTool = () => {
     const tool = new paper.Tool();
@@ -260,7 +261,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
         hitItem = hitResult.item;
         
         // Find the object ID for this paper item
-        hitObjectId = Object.entries(objects).find(([_, obj]) => obj.paperItem === hitResult.item)?.[0] || null;
+        hitObjectId = Object.entries(objects).find(([, obj]) => obj.paperItem === hitResult.item)?.[0] || null;
         
         if (hitObjectId) {
           if (event.modifiers.shift) {
@@ -309,7 +310,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
         // Move selected objects
         const selectedObjects = Object.entries(objects)
           .filter(([id]) => selection.selectedIds.includes(id))
-          .map(([_, obj]) => obj);
+          .map(([, obj]) => obj);
         
         selectedObjects.forEach(obj => {
           obj.paperItem.position = obj.paperItem.position.add(event.delta);
@@ -666,9 +667,9 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
         
         // Get the color of the clicked item
         if (hitResult.type === 'fill' && 'fillColor' in hitResult.item) {
-          targetColor = (hitResult.item as any).fillColor;
+          targetColor = (hitResult.item as paper.Path).fillColor;
         } else if (hitResult.type === 'stroke' && 'strokeColor' in hitResult.item) {
-          targetColor = (hitResult.item as any).strokeColor;
+          targetColor = (hitResult.item as paper.Path).strokeColor;
         }
         
         if (targetColor) {
@@ -678,7 +679,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
           
           Object.entries(objects).forEach(([id, obj]) => {
             if (obj.paperItem && 'fillColor' in obj.paperItem) {
-              const itemColor = (obj.paperItem as any).fillColor;
+              const itemColor = (obj.paperItem as paper.Path).fillColor;
               if (itemColor && colorsSimilar(targetColor, itemColor, tolerance)) {
                 selectedIds.push(id);
               }
@@ -1016,7 +1017,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
       
       if (hitResult && hitResult.item) {
         // Find the object ID for this paper item
-        const objectId = Object.entries(objects).find(([_, obj]) => obj.paperItem === hitResult.item)?.[0];
+        const objectId = Object.entries(objects).find(([, obj]) => obj.paperItem === hitResult.item)?.[0];
         
         if (objectId) {
           deleteObjects([objectId]);
@@ -1230,7 +1231,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
         
         {/* Selection overlay for visual indicators and handles */}
         {activeTool === 'select' && (
-          <SelectionOverlay canvasRef={canvasRef} />
+          <SelectionOverlay />
         )}
       </div>
     </div>

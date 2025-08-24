@@ -5,7 +5,7 @@ import { MenuBar } from './components/MenuBar'
 import { RightSidebar } from './components/RightSidebar'
 import { useDesignStore } from './store/designStore'
 import { useUIStore } from './store/uiStore'
-import { useTheme } from './contexts/ThemeContext'
+import { useTheme } from './hooks/useTheme'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './App.css'
@@ -17,7 +17,7 @@ function App() {
   
   useKeyboardShortcuts();
 
-  const handleSelectionChange = (items: any[]) => {
+  const handleSelectionChange = (items: paper.Item[]) => {
     setSelectedItems(items)
   }
 

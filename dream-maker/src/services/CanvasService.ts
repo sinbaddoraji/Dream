@@ -152,8 +152,9 @@ export class CanvasService {
       this.currentTool.remove();
     }
     
-    if (this.scope) {
-      this.scope.remove();
+    if (this.scope && this.scope.project) {
+      this.scope.project.clear();
+      this.scope.project.remove();
     }
   }
 }

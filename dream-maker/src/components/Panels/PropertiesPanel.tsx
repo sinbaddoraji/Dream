@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Move, 
   RotateCcw, 
@@ -11,7 +11,7 @@ import {
   Hash
 } from 'lucide-react';
 import { useDesignStore } from '../../store/designStore';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 interface PropertiesPanelProps {
   compact?: boolean;
@@ -20,7 +20,6 @@ interface PropertiesPanelProps {
 export function PropertiesPanel({ compact = false }: PropertiesPanelProps) {
   const { theme } = useTheme();
   const {
-    selection,
     getSelectedObjects,
     updateObject,
     lockObjects,

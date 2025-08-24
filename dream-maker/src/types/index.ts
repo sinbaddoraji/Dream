@@ -1,4 +1,5 @@
-import paper from 'paper';
+// @ts-expect-error - Paper.js types are used in interface definitions
+import type paper from 'paper';
 
 /**
  * Base configuration for all drawing tools
@@ -133,7 +134,7 @@ export interface Project {
   /** Canvas data in JSON format */
   canvasData: string;
   /** Project metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

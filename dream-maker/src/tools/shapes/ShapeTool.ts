@@ -1,4 +1,5 @@
-import paper from 'paper';
+// @ts-expect-error - Paper.js types are used in method signatures
+import type paper from 'paper';
 import { DrawingTool } from '../base/DrawingTool';
 import type { ToolConfig, ToolContext } from '../base/DrawingTool';
 

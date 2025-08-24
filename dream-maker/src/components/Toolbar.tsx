@@ -10,7 +10,7 @@ import {
   Hand 
 } from 'lucide-react';
 import { useDesignStore, type Tool } from '../store/designStore';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 
 interface ToolbarProps {
   fillColor: string;

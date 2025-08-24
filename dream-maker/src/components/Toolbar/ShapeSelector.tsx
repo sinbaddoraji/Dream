@@ -10,7 +10,7 @@ import {
   Minus
 } from 'lucide-react';
 import { useDesignStore, type Tool } from '../../store/designStore';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 const shapeTools = [
   { id: 'rectangle', icon: Square, label: 'Rectangle' },

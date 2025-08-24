@@ -1,6 +1,5 @@
-import { Settings, Sliders } from 'lucide-react';
 import { useDesignStore } from '../../store/designStore';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 export function ToolOptions() {
   const { activeTool, strokeWidth, setStrokeWidth } = useDesignStore();

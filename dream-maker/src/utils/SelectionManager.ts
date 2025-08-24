@@ -1,5 +1,5 @@
 import paper from 'paper';
-import { CanvasObject } from '../store/designStore';
+import type { CanvasObject } from '../store/designStore';
 
 export interface SelectionBounds {
   x: number;
@@ -20,7 +20,6 @@ export interface SelectionHandle {
 export class SelectionManager {
   private marqueeStart: paper.Point | null = null;
   private marqueeRect: paper.Path.Rectangle | null = null;
-  private selectionBounds: paper.Rectangle | null = null;
   private transformMode: 'move' | 'resize' | 'rotate' | null = null;
   private resizeHandle: SelectionHandle | null = null;
   private originalBounds: paper.Rectangle | null = null;
@@ -34,7 +33,7 @@ export class SelectionManager {
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
   }
 
-  private handleKeyDown(event: KeyboardEvent) {
+  private handleKeyDown() {
     // Will be implemented with keyboard shortcuts
   }
 
@@ -230,7 +229,7 @@ export class SelectionManager {
 
     const handle = this.resizeHandle;
     const original = this.originalBounds;
-    let newBounds = { ...bounds };
+    const newBounds = { ...bounds };
 
     // Calculate new bounds based on handle position
     switch (handle.position) {

@@ -1,14 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDesignStore } from '../../store/designStore';
-import { SelectionBounds, SelectionHandle, selectionManager } from '../../utils/SelectionManager';
-import { useTheme } from '../../contexts/ThemeContext';
+import { selectionManager } from '../../utils/SelectionManager';
+import type { SelectionBounds, SelectionHandle } from '../../utils/SelectionManager';
+import { useTheme } from '../../hooks/useTheme';
 import { ContextMenu } from './ContextMenu';
 
-interface SelectionOverlayProps {
-  canvasRef: React.RefObject<HTMLCanvasElement>;
-}
-
-export function SelectionOverlay({ canvasRef }: SelectionOverlayProps) {
+export function SelectionOverlay() {
   const { theme } = useTheme();
   const {
     selection,
@@ -16,8 +13,6 @@ export function SelectionOverlay({ canvasRef }: SelectionOverlayProps) {
     setSelectionBounds,
     setTransformMode,
     clearSelection,
-    addToSelection,
-    removeFromSelection
   } = useDesignStore();
   
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -193,7 +188,7 @@ export function SelectionOverlay({ canvasRef }: SelectionOverlayProps) {
           top: selectionBounds.y - 1,
           width: selectionBounds.width + 2,
           height: selectionBounds.height + 2,
-          borderColor: theme.colors.selection?.border || '#007AFF',
+          borderColor: theme.colors.canvas.selection || '#007AFF',
           borderStyle: selection.selectedIds.length > 1 ? 'dashed' : 'solid',
         }}
       />
@@ -208,8 +203,8 @@ export function SelectionOverlay({ canvasRef }: SelectionOverlayProps) {
             top: handle.point.y - handleHalfSize,
             width: handleSize,
             height: handleSize,
-            borderColor: theme.colors.selection?.handle || '#007AFF',
-            backgroundColor: theme.colors.selection?.handleFill || '#FFFFFF',
+            borderColor: theme.colors.canvas.selection || '#007AFF',
+            backgroundColor: '#FFFFFF',
             borderRadius: handle.type === 'rotate' ? '50%' : '2px',
             cursor: handle.cursor,
             transform: handle.type === 'rotate' ? 'scale(1.2)' : 'none',
@@ -226,7 +221,7 @@ export function SelectionOverlay({ canvasRef }: SelectionOverlayProps) {
             top: selectionBounds.y,
             width: 1,
             height: 30,
-            backgroundColor: theme.colors.selection?.rotationLine || '#007AFF',
+            backgroundColor: theme.colors.canvas.selection || '#007AFF',
             transformOrigin: 'bottom center',
           }}
         />

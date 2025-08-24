@@ -1,5 +1,6 @@
 import { Palette, Monitor, Sun, Moon } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
+import type { ThemeName } from '../types/theme';
 
 export function ThemeSwitcher() {
   const { theme, themeName, setTheme, availableThemes } = useTheme();
@@ -21,7 +22,7 @@ export function ThemeSwitcher() {
     <div className="relative">
       <select
         value={themeName}
-        onChange={(e) => setTheme(e.target.value as any)}
+        onChange={(e) => setTheme(e.target.value as ThemeName)}
         className="
           appearance-none bg-transparent border-2 rounded-lg px-3 py-2 pr-8
           text-sm font-medium cursor-pointer transition-all
@@ -33,7 +34,7 @@ export function ThemeSwitcher() {
           color: theme.colors.text.primary,
         }}
       >
-        {availableThemes.map((themeOption) => (
+        {availableThemes.map((themeOption: { name: ThemeName; displayName: string }) => (
           <option key={themeOption.name} value={themeOption.name}>
             {themeOption.displayName}
           </option>

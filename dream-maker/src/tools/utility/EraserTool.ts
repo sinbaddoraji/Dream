@@ -26,7 +26,7 @@ export class EraserTool extends DrawingTool {
     
     if (hitResult && hitResult.item) {
       const objectId = Object.entries(this.context.objects)
-        .find(([_, obj]) => obj.paperItem === hitResult.item)?.[0];
+        .find(([, obj]) => obj.paperItem === hitResult.item)?.[0];
       
       if (objectId) {
         this.context.deleteObjects([objectId]);

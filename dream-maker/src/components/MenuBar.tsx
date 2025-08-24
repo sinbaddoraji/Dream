@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { PanelRight } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
+import { useTheme } from '../hooks/useTheme'
 import { useUIStore } from '../store/uiStore'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
-interface MenuBarProps {}
-
-export function MenuBar({}: MenuBarProps) {
+export function MenuBar() {
   const { theme } = useTheme()
   const { rightSidebar, setRightSidebarVisible } = useUIStore()
   const [openMenu, setOpenMenu] = useState<string | null>(null)

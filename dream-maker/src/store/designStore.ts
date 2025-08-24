@@ -72,7 +72,7 @@ interface DesignStore {
   selection: SelectionState;
   
   // History
-  history: any[];
+  history: unknown[];
   historyIndex: number;
   
   // Actions
@@ -121,8 +121,8 @@ interface DesignStore {
   setSelectionBounds: (bounds?: paper.Rectangle) => void;
   
   // Legacy compatibility
-  selectedItems: any[];
-  setSelectedItems: (items: any[]) => void;
+  selectedItems: paper.Item[];
+  setSelectedItems: (items: paper.Item[]) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -158,7 +158,9 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   })),
   
   removeObject: (id) => set((state) => {
-    const { [id]: removed, ...remaining } = state.objects;
+    const remaining = Object.fromEntries(
+      Object.entries(state.objects).filter(([key]) => key !== id)
+    );
     return { objects: remaining };
   }),
   
@@ -248,7 +250,9 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     const group = state.groups[groupId];
     if (!group) return state;
     
-    const { [groupId]: removed, ...remainingGroups } = state.groups;
+    const remainingGroups = Object.fromEntries(
+      Object.entries(state.groups).filter(([key]) => key !== groupId)
+    );
     const updatedObjects = Object.fromEntries(
       Object.entries(state.objects).map(([id, obj]) => [
         id,

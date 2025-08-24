@@ -1,10 +1,11 @@
 import paper from 'paper';
 import { ShapeTool } from './ShapeTool';
+import type { ToolConfig, ToolContext } from '../base/DrawingTool';
 
 export class PolygonTool extends ShapeTool {
   protected sides: number;
 
-  constructor(config: any, context: any, sides: number) {
+  constructor(config: ToolConfig, context: ToolContext, sides: number) {
     super(config, context);
     this.sides = sides;
   }
@@ -22,25 +23,25 @@ export class PolygonTool extends ShapeTool {
 }
 
 export class TriangleTool extends PolygonTool {
-  constructor(config: any, context: any) {
+  constructor(config: ToolConfig, context: ToolContext) {
     super(config, context, 3);
   }
 }
 
 export class PentagonTool extends PolygonTool {
-  constructor(config: any, context: any) {
+  constructor(config: ToolConfig, context: ToolContext) {
     super(config, context, 5);
   }
 }
 
 export class HexagonTool extends PolygonTool {
-  constructor(config: any, context: any) {
+  constructor(config: ToolConfig, context: ToolContext) {
     super(config, context, 6);
   }
 }
 
 export class OctagonTool extends PolygonTool {
-  constructor(config: any, context: any) {
+  constructor(config: ToolConfig, context: ToolContext) {
     super(config, context, 8);
   }
 }
