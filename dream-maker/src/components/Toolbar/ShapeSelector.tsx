@@ -57,12 +57,19 @@ export function ShapeSelector({ isActive, onShapeSelect }: ShapeSelectorProps) {
     setShowMenu(false);
   };
 
+  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>) => {
+    e.dataTransfer.setData('text/plain', 'shapes');
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   return (
     <div className="relative">
       <button
+        draggable
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
-        className="relative flex items-center justify-center p-1.5 rounded border transition-all duration-200 hover:scale-105"
+        onDragStart={handleDragStart}
+        className="relative flex items-center justify-center p-1.5 rounded border transition-all duration-200 hover:scale-105 w-full"
         style={{
           backgroundColor: isActive 
             ? theme.colors.toolbar.buttonActive 
@@ -86,7 +93,7 @@ export function ShapeSelector({ isActive, onShapeSelect }: ShapeSelectorProps) {
             e.currentTarget.style.borderColor = theme.colors.border.primary;
           }
         }}
-        title="Shapes (G)"
+        title="Shapes (G) - Drag to sidebar"
       >
         <CurrentShapeIcon size={18} />
         <span 
@@ -118,8 +125,13 @@ export function ShapeSelector({ isActive, onShapeSelect }: ShapeSelectorProps) {
               const isSelected = selectedShape === shape.id;
               return (
                 <button
+                  draggable
                   key={shape.id}
                   onClick={() => handleShapeClick(shape.id as Tool)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', shape.id);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   className="flex items-center justify-center p-2 rounded border transition-colors"
                   style={{
                     backgroundColor: isSelected 
@@ -132,7 +144,7 @@ export function ShapeSelector({ isActive, onShapeSelect }: ShapeSelectorProps) {
                       ? theme.colors.toolbar.buttonActive 
                       : theme.colors.border.primary,
                   }}
-                  title={shape.label}
+                  title={`${shape.label} - Drag to sidebar`}
                 >
                   <ShapeIcon size={14} />
                 </button>

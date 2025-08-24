@@ -12,9 +12,16 @@ interface ToolButtonProps {
 export function ToolButton({ tool, icon: Icon, isActive, onClick }: ToolButtonProps) {
   const { theme } = useTheme();
 
+  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>) => {
+    e.dataTransfer.setData('text/plain', tool.id);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   return (
     <button
+      draggable
       onClick={onClick}
+      onDragStart={handleDragStart}
       className="relative flex items-center justify-center p-1.5 rounded border transition-all duration-200 hover:scale-105"
       style={{
         backgroundColor: isActive 
@@ -39,7 +46,7 @@ export function ToolButton({ tool, icon: Icon, isActive, onClick }: ToolButtonPr
           e.currentTarget.style.borderColor = theme.colors.border.primary;
         }
       }}
-      title={`${tool.label} (${tool.shortcut})`}
+      title={`${tool.label} (${tool.shortcut}) - Drag to sidebar`}
     >
       <Icon size={18} />
       

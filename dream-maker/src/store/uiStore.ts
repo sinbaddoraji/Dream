@@ -13,12 +13,19 @@ interface ToolbarState {
 interface UIStore {
   toolbar: ToolbarState;
   showStatusBar: boolean;
+  rightSidebar: {
+    isVisible: boolean;
+    droppedTools: string[];
+  };
   
   setToolbarPosition: (position: DockPosition) => void;
   setToolbarMinimized: (minimized: boolean) => void;
   setToolbarFloatingPosition: (x: number, y: number) => void;
   setToolbarSize: (width: number, height: number) => void;
   setShowStatusBar: (show: boolean) => void;
+  setRightSidebarVisible: (visible: boolean) => void;
+  addToolToRightSidebar: (toolId: string) => void;
+  removeToolFromRightSidebar: (toolId: string) => void;
   resetToolbarToDefaults: () => void;
 }
 
@@ -34,6 +41,10 @@ export const useUIStore = create<UIStore>()(
     (set) => ({
       toolbar: defaultToolbarState,
       showStatusBar: true,
+      rightSidebar: {
+        isVisible: false,
+        droppedTools: []
+      },
       
       setToolbarPosition: (position) => 
         set((state) => ({ 
@@ -57,6 +68,29 @@ export const useUIStore = create<UIStore>()(
         
       setShowStatusBar: (showStatusBar) => set({ showStatusBar }),
       
+      setRightSidebarVisible: (isVisible) =>
+        set((state) => ({
+          rightSidebar: { ...state.rightSidebar, isVisible }
+        })),
+        
+      addToolToRightSidebar: (toolId) =>
+        set((state) => ({
+          rightSidebar: {
+            ...state.rightSidebar,
+            droppedTools: state.rightSidebar.droppedTools.includes(toolId) 
+              ? state.rightSidebar.droppedTools 
+              : [...state.rightSidebar.droppedTools, toolId]
+          }
+        })),
+        
+      removeToolFromRightSidebar: (toolId) =>
+        set((state) => ({
+          rightSidebar: {
+            ...state.rightSidebar,
+            droppedTools: state.rightSidebar.droppedTools.filter(id => id !== toolId)
+          }
+        })),
+      
       resetToolbarToDefaults: () => 
         set({ toolbar: { ...defaultToolbarState } })
     }),
@@ -64,7 +98,8 @@ export const useUIStore = create<UIStore>()(
       name: 'dream-maker-ui-preferences',
       partialize: (state) => ({ 
         toolbar: state.toolbar,
-        showStatusBar: state.showStatusBar 
+        showStatusBar: state.showStatusBar,
+        rightSidebar: state.rightSidebar
       }),
     }
   )

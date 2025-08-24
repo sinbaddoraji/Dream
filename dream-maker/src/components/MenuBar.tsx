@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
+import { PanelRight } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
+import { useUIStore } from '../store/uiStore'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
 interface MenuBarProps {}
 
 export function MenuBar({}: MenuBarProps) {
   const { theme } = useTheme()
+  const { rightSidebar, setRightSidebarVisible } = useUIStore()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
@@ -151,7 +154,16 @@ export function MenuBar({}: MenuBarProps) {
         ))}
       </div>
       
-      <div className="flex items-center">
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={() => setRightSidebarVisible(!rightSidebar.isVisible)}
+          className={`p-2 rounded transition-colors ${
+            rightSidebar.isVisible ? 'bg-blue-500 text-white' : 'hover:bg-gray-200'
+          }`}
+          title="Toggle Favorites Sidebar"
+        >
+          <PanelRight size={16} />
+        </button>
         <ThemeSwitcher />
       </div>
     </div>
