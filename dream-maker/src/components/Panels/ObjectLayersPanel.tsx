@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, MoreHorizontal } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useDesignStore } from '../../store/designStore';
 import { useTheme } from '../../hooks/useTheme';
 import { ObjectItem } from './ObjectItem';

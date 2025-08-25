@@ -6,8 +6,6 @@ import {
   Unlock, 
   Image as ImageIcon, 
   Square, 
-  Circle, 
-  Triangle, 
   Type, 
   Minus, 
   Folder, 
@@ -151,7 +149,7 @@ export function ObjectItem({ object, isSelected, isGroup = false, onClick, onCon
       onContextMenu={onContextMenu}
       style={{
         backgroundColor: isSelected 
-          ? theme.colors.accent?.light || 'rgb(219 234 254)'
+          ? theme.colors.interactive.accent || 'rgb(219 234 254)'
           : undefined
       }}
     >
