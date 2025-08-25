@@ -30,6 +30,7 @@ import { ToolButton } from './ToolButton';
 import { ColorPicker } from './ColorPicker';
 import { ToolOptions } from './ToolOptions';
 import { ShapeSelector } from './ShapeSelector';
+import { HistoryPanel } from '../Panels/HistoryPanel';
 // import { PropertiesPanel } from '../Panels/PropertiesPanel';
 
 const toolConfigs: ToolConfig[] = [
@@ -282,6 +283,14 @@ export function DockableToolbar({
             />
             <ToolOptions />
           </div>
+
+          {/* History Panel */}
+          {(toolbar.position === 'left' || toolbar.position === 'right') && (
+            <HistoryPanel 
+              compact={toolbar.position === 'right'} 
+              className="flex-shrink-0"
+            />
+          )}
 
           {/* Properties Panel - temporarily disabled during Konva migration */}
           {/* toolbar.position === 'left' && (

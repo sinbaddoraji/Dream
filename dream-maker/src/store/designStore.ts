@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { FileService, type ProjectData } from '../services/FileService';
+import type { DrawAction } from '../types/history';
 
 export type Tool = 
   | 'select' 
@@ -86,8 +87,10 @@ interface DesignStore {
   selection: SelectionState;
   
   // History
-  history: unknown[];
+  history: DrawAction[];
   historyIndex: number;
+  setHistory: (history: DrawAction[]) => void;
+  setHistoryIndex: (index: number) => void;
   
   // Project actions
   newProject: (name?: string) => void;
@@ -680,4 +683,8 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       reader.readAsDataURL(file);
     });
   },
+
+  // History setters
+  setHistory: (history: DrawAction[]) => set({ history }),
+  setHistoryIndex: (historyIndex: number) => set({ historyIndex }),
 }));

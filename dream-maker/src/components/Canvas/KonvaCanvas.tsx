@@ -4,6 +4,7 @@ import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useTheme } from '../../hooks/useTheme';
 import { useDesignStore } from '../../store/designStore';
+import { useDrawHistory } from '../../hooks/useDrawHistory';
 
 interface KonvaCanvasProps {
   activeTool: string;
@@ -25,6 +26,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     setCanvasPosition,
     objects
   } = useDesignStore();
+  const { addAction } = useDrawHistory();
   
   const stageRef = useRef<Konva.Stage>(null);
   const layerRef = useRef<Konva.Layer>(null);
@@ -113,11 +115,12 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     // Import the first image file (could be extended to handle multiple)
     try {
       const { importImage } = useDesignStore.getState();
-      await importImage(imageFiles[0]);
+      const imageId = await importImage(imageFiles[0]);
+      addAction('import_image', [imageId], { filename: imageFiles[0].name });
     } catch (error) {
       console.error('Failed to import dropped image:', error);
     }
-  }, []);
+  }, [addAction]);
   
   // Get cursor based on tool and state
   const getCursorForTool = (tool: string): string => {
@@ -213,8 +216,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     // Start drawing based on active tool
     switch (activeTool) {
       case 'rectangle':
+        const rectId = generateId();
         const newRect = {
-          id: generateId(),
+          id: rectId,
           type: 'rect',
           x: pos.x,
           y: pos.y,
@@ -227,11 +231,13 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         };
         setShapes([...shapes, newRect]);
         setIsDrawing(true);
+        // Note: We'll add the history action when the drawing is completed
         break;
         
       case 'ellipse':
+        const ellipseId = generateId();
         const newEllipse = {
-          id: generateId(),
+          id: ellipseId,
           type: 'ellipse',
           x: pos.x,
           y: pos.y,
@@ -244,6 +250,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         };
         setShapes([...shapes, newEllipse]);
         setIsDrawing(true);
+        // Note: We'll add the history action when the drawing is completed
         break;
         
       case 'line':
@@ -260,8 +267,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       case 'text':
         const text = prompt('Enter text:', 'Text');
         if (text) {
+          const textId = generateId();
           const newText = {
-            id: generateId(),
+            id: textId,
             type: 'text',
             x: pos.x,
             y: pos.y,
@@ -272,6 +280,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             draggable: false
           };
           setShapes([...shapes, newText]);
+          // Add to history immediately for text
+          addAction('create_text', [textId], { text, position: { x: pos.x, y: pos.y } });
         }
         break;
         
@@ -279,11 +289,13 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         // Find and remove shape at this position
         const shape = stage.getIntersection(pos);
         if (shape && shape.id()) {
-          setShapes(shapes.filter(s => s.id !== shape.id()));
+          const shapeId = shape.id();
+          setShapes(shapes.filter(s => s.id !== shapeId));
+          addAction('delete_object', [shapeId], { position: { x: pos.x, y: pos.y } });
         }
         break;
     }
-  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, shapes, onSelectionChange, canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition]);
+  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, shapes, onSelectionChange, canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition, addAction]);
   
   // Handle stage mouse move
   const handleStageMouseMove = useCallback((e: KonvaEventObject<MouseEvent>) => {
@@ -353,8 +365,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     setIsDrawing(false);
     
     if ((activeTool === 'line' || activeTool === 'pen' || activeTool === 'brush') && currentPath.length > 0) {
+      const lineId = generateId();
       const newLine = {
-        id: generateId(),
+        id: lineId,
         type: 'line',
         points: currentPath,
         stroke: activeTool === 'brush' ? fillColor : strokeColor,
@@ -366,19 +379,50 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       };
       setShapes([...shapes, newLine]);
       setCurrentPath([]);
+      
+      // Add to history
+      if (activeTool === 'line') {
+        addAction('create_line', [lineId], { points: currentPath });
+      } else if (activeTool === 'pen') {
+        addAction('create_pen_stroke', [lineId], { points: currentPath });
+      } else if (activeTool === 'brush') {
+        addAction('create_brush_stroke', [lineId], { points: currentPath });
+      }
     }
     
-    // Make shapes draggable after creation when in select mode
+    // Make shapes draggable after creation when in select mode and add to history
     if (activeTool === 'rectangle' || activeTool === 'ellipse') {
-      const updatedShapes = shapes.map((shape, index) => {
-        if (index === shapes.length - 1) {
-          return { ...shape, draggable: true };
+      const lastShapeIndex = shapes.length - 1;
+      const lastShape = shapes[lastShapeIndex];
+      
+      if (lastShape) {
+        const updatedShapes = shapes.map((shape, index) => {
+          if (index === lastShapeIndex) {
+            return { ...shape, draggable: true };
+          }
+          return shape;
+        });
+        setShapes(updatedShapes);
+        
+        // Add to history
+        if (activeTool === 'rectangle') {
+          addAction('create_rectangle', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            width: lastShape.width, 
+            height: lastShape.height 
+          });
+        } else if (activeTool === 'ellipse') {
+          addAction('create_ellipse', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            radiusX: lastShape.radiusX, 
+            radiusY: lastShape.radiusY 
+          });
         }
-        return shape;
-      });
-      setShapes(updatedShapes);
+      }
     }
-  }, [isDrawing, activeTool, currentPath, shapes, strokeColor, fillColor, strokeWidth, isPanning]);
+  }, [isDrawing, activeTool, currentPath, shapes, strokeColor, fillColor, strokeWidth, isPanning, addAction]);
   
   // Handle shape click for selection
   const handleShapeClick = useCallback((e: KonvaEventObject<MouseEvent>, shapeId: string) => {
