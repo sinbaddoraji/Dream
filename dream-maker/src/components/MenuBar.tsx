@@ -2,26 +2,93 @@ import { useState, useRef, useEffect } from 'react'
 import { PanelRight } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { useUIStore } from '../store/uiStore'
+import { useDesignStore } from '../store/designStore'
+import { FileService } from '../services/FileService'
 import { ThemeSwitcher } from './ThemeSwitcher'
+import { ConfirmDialog, ExportDialog, SaveAsDialog } from './Modals'
 
 export function MenuBar() {
   const { theme } = useTheme()
   const { rightSidebar, setRightSidebarVisible } = useUIStore()
+  const { 
+    projectName, 
+    hasUnsavedChanges,
+    newProject, 
+    loadProject, 
+    saveProject, 
+    saveProjectAs, 
+    exportProject,
+    zoomIn,
+    zoomOut,
+    zoomToFit
+  } = useDesignStore()
+  
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  
+  // Dialog states
+  const [showNewConfirm, setShowNewConfirm] = useState(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [showExportDialog, setShowExportDialog] = useState(false)
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false)
+
+  // File operation handlers
+  const handleNew = () => {
+    if (hasUnsavedChanges) {
+      setShowNewConfirm(true)
+    } else {
+      newProject()
+    }
+  }
+
+  const handleOpen = async () => {
+    try {
+      const projectData = await FileService.loadProjectFromFile()
+      loadProject(projectData)
+    } catch (error) {
+      console.error('Failed to open project:', error)
+      // Could show error toast here
+    }
+  }
+
+  const handleSave = () => {
+    try {
+      saveProject()
+    } catch (error) {
+      console.error('Failed to save project:', error)
+      // Could show error toast here
+    }
+  }
+
+  const handleSaveAs = () => {
+    setShowSaveAsDialog(true)
+  }
+
+  const handleExport = () => {
+    setShowExportDialog(true)
+  }
+
+  const handleExit = () => {
+    if (hasUnsavedChanges) {
+      setShowExitConfirm(true)
+    } else {
+      // In a real app, this would close the window
+      console.log('Exiting application')
+    }
+  }
 
   const menus = [
     {
       name: 'File',
       items: [
-        { label: 'New', shortcut: 'Ctrl+N', action: () => console.log('New') },
-        { label: 'Open...', shortcut: 'Ctrl+O', action: () => console.log('Open') },
-        { label: 'Save', shortcut: 'Ctrl+S', action: () => console.log('Save') },
-        { label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: () => console.log('Save As') },
+        { label: 'New', shortcut: 'Ctrl+N', action: handleNew },
+        { label: 'Open...', shortcut: 'Ctrl+O', action: handleOpen },
+        { label: 'Save', shortcut: 'Ctrl+S', action: handleSave },
+        { label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: handleSaveAs },
         { type: 'separator' as const },
-        { label: 'Export...', action: () => console.log('Export') },
+        { label: 'Export...', action: handleExport },
         { type: 'separator' as const },
-        { label: 'Exit', shortcut: 'Ctrl+Q', action: () => console.log('Exit') }
+        { label: 'Exit', shortcut: 'Ctrl+Q', action: handleExit }
       ]
     },
     {
@@ -41,9 +108,9 @@ export function MenuBar() {
     {
       name: 'View',
       items: [
-        { label: 'Zoom In', shortcut: 'Ctrl++', action: () => console.log('Zoom In') },
-        { label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => console.log('Zoom Out') },
-        { label: 'Zoom to Fit', shortcut: 'Ctrl+0', action: () => console.log('Zoom to Fit') },
+        { label: 'Zoom In', shortcut: 'Ctrl++', action: zoomIn },
+        { label: 'Zoom Out', shortcut: 'Ctrl+-', action: zoomOut },
+        { label: 'Zoom to Fit', shortcut: 'Ctrl+0', action: zoomToFit },
         { type: 'separator' as const },
         { label: 'Show Grid', action: () => console.log('Show Grid') },
         { label: 'Show Rulers', action: () => console.log('Show Rulers') },
@@ -164,6 +231,60 @@ export function MenuBar() {
         </button>
         <ThemeSwitcher />
       </div>
+      
+      {/* Modals */}
+      <ConfirmDialog
+        isOpen={showNewConfirm}
+        title="New Project"
+        message={`You have unsaved changes. Creating a new project will lose these changes. Continue?`}
+        confirmText="Create New"
+        onConfirm={() => {
+          newProject()
+          setShowNewConfirm(false)
+        }}
+        onCancel={() => setShowNewConfirm(false)}
+      />
+      
+      <ConfirmDialog
+        isOpen={showExitConfirm}
+        title="Exit Application"
+        message="You have unsaved changes. Exit without saving?"
+        confirmText="Exit"
+        onConfirm={() => {
+          setShowExitConfirm(false)
+          console.log('Exiting application')
+        }}
+        onCancel={() => setShowExitConfirm(false)}
+      />
+      
+      <ExportDialog
+        isOpen={showExportDialog}
+        onExport={(format) => {
+          try {
+            exportProject(format)
+            setShowExportDialog(false)
+          } catch (error) {
+            console.error('Export failed:', error)
+            // Could show error toast here
+          }
+        }}
+        onCancel={() => setShowExportDialog(false)}
+      />
+      
+      <SaveAsDialog
+        isOpen={showSaveAsDialog}
+        currentName={projectName}
+        onSave={(name) => {
+          try {
+            saveProjectAs(name)
+            setShowSaveAsDialog(false)
+          } catch (error) {
+            console.error('Save As failed:', error)
+            // Could show error toast here
+          }
+        }}
+        onCancel={() => setShowSaveAsDialog(false)}
+      />
     </div>
   )
 }

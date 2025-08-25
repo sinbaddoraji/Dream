@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { FileService, type ProjectData } from '../services/FileService';
 
 export type Tool = 
   | 'select' 
@@ -53,6 +54,16 @@ export interface SelectionState {
 }
 
 interface DesignStore {
+  // Project metadata
+  projectName: string;
+  hasUnsavedChanges: boolean;
+  lastSaved: string | null;
+  
+  // Canvas view state
+  canvasScale: number;
+  canvasX: number;
+  canvasY: number;
+  
   // Tools
   activeTool: Tool;
   selectedShape: Tool;
@@ -72,6 +83,24 @@ interface DesignStore {
   // History
   history: unknown[];
   historyIndex: number;
+  
+  // Project actions
+  newProject: (name?: string) => void;
+  loadProject: (projectData: ProjectData) => void;
+  saveProject: () => void;
+  saveProjectAs: (name: string) => void;
+  exportProject: (format: 'png' | 'jpg' | 'svg' | 'json') => void;
+  setProjectName: (name: string) => void;
+  markUnsavedChanges: () => void;
+  markSaved: () => void;
+  
+  // Canvas view actions
+  setCanvasScale: (scale: number) => void;
+  setCanvasPosition: (x: number, y: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  zoomToFit: () => void;
+  resetView: () => void;
   
   // Actions
   setActiveTool: (tool: Tool) => void;
@@ -129,9 +158,15 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export const useDesignStore = create<DesignStore>((set, get) => ({
   // Initial state
+  projectName: 'Untitled Project',
+  hasUnsavedChanges: false,
+  lastSaved: null,
+  canvasScale: 1,
+  canvasX: 0,
+  canvasY: 0,
   activeTool: 'select',
   selectedShape: 'rectangle',
-  fillColor: '#ffffff',
+  fillColor: 'transparent',
   strokeColor: '#000000',
   strokeWidth: 2,
   fontSize: 16,
@@ -158,21 +193,23 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   
   // Object management
   addObject: (object) => set((state) => ({
-    objects: { ...state.objects, [object.id]: object }
+    objects: { ...state.objects, [object.id]: object },
+    hasUnsavedChanges: true
   })),
   
   removeObject: (id) => set((state) => {
     const remaining = Object.fromEntries(
       Object.entries(state.objects).filter(([key]) => key !== id)
     );
-    return { objects: remaining };
+    return { objects: remaining, hasUnsavedChanges: true };
   }),
   
   updateObject: (id, updates) => set((state) => ({
     objects: {
       ...state.objects,
       [id]: { ...state.objects[id], ...updates }
-    }
+    },
+    hasUnsavedChanges: true
   })),
   
   getObject: (id) => get().objects[id],
@@ -434,4 +471,155 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   
   // Legacy compatibility
   setSelectedItems: (items) => set({ selectedItems: items }),
+  
+  // Project management
+  newProject: (name = 'Untitled Project') => {
+    set({
+      projectName: name,
+      hasUnsavedChanges: false,
+      lastSaved: null,
+      canvasScale: 1,
+      canvasX: 0,
+      canvasY: 0,
+      objects: {},
+      groups: {},
+      selection: {
+        selectedIds: [],
+        isSelecting: false,
+        transformMode: null,
+      },
+      selectedItems: [],
+      history: [],
+      historyIndex: -1,
+      fillColor: 'transparent',
+      strokeColor: '#000000',
+      strokeWidth: 2,
+      fontSize: 16,
+      fontFamily: 'Arial',
+    });
+    FileService.clearAutoSave();
+  },
+
+  loadProject: (projectData: ProjectData) => {
+    set({
+      projectName: projectData.name,
+      hasUnsavedChanges: false,
+      lastSaved: projectData.modifiedAt,
+      objects: projectData.objects,
+      groups: projectData.groups,
+      fillColor: projectData.settings.fillColor,
+      strokeColor: projectData.settings.strokeColor,
+      strokeWidth: projectData.settings.strokeWidth,
+      fontSize: projectData.settings.fontSize,
+      fontFamily: projectData.settings.fontFamily,
+      selection: {
+        selectedIds: [],
+        isSelecting: false,
+        transformMode: null,
+      },
+      selectedItems: [],
+      history: [],
+      historyIndex: -1,
+    });
+  },
+
+  saveProject: () => {
+    const state = get();
+    const projectData = FileService.serializeProject({
+      name: state.projectName,
+      objects: state.objects,
+      groups: state.groups,
+      settings: {
+        fillColor: state.fillColor,
+        strokeColor: state.strokeColor,
+        strokeWidth: state.strokeWidth,
+        fontSize: state.fontSize,
+        fontFamily: state.fontFamily,
+      },
+      createdAt: state.lastSaved || undefined,
+    });
+    
+    try {
+      FileService.saveProjectToFile(projectData);
+      FileService.saveToLocalStorage(projectData);
+      set({ 
+        hasUnsavedChanges: false, 
+        lastSaved: new Date().toISOString() 
+      });
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      throw error;
+    }
+  },
+
+  saveProjectAs: (name: string) => {
+    set({ projectName: name });
+    get().saveProject();
+  },
+
+  exportProject: (format: 'png' | 'jpg' | 'svg' | 'json') => {
+    const state = get();
+    
+    try {
+      switch (format) {
+        case 'png':
+        case 'jpg':
+          FileService.exportAsImage(format);
+          break;
+        case 'svg':
+          FileService.exportAsSVG(state.objects);
+          break;
+        case 'json':
+          const projectData = FileService.serializeProject({
+            name: state.projectName,
+            objects: state.objects,
+            groups: state.groups,
+            settings: {
+              fillColor: state.fillColor,
+              strokeColor: state.strokeColor,
+              strokeWidth: state.strokeWidth,
+              fontSize: state.fontSize,
+              fontFamily: state.fontFamily,
+            },
+            createdAt: state.lastSaved || undefined,
+          });
+          FileService.saveProjectToFile(projectData);
+          break;
+      }
+    } catch (error) {
+      console.error('Failed to export project:', error);
+      throw error;
+    }
+  },
+
+  setProjectName: (name: string) => set({ projectName: name }),
+  
+  markUnsavedChanges: () => set({ hasUnsavedChanges: true }),
+  
+  markSaved: () => set({ 
+    hasUnsavedChanges: false, 
+    lastSaved: new Date().toISOString() 
+  }),
+  
+  // Canvas view management
+  setCanvasScale: (scale: number) => set({ 
+    canvasScale: Math.max(0.1, Math.min(5, scale)) // Limit scale between 0.1x and 5x
+  }),
+  
+  setCanvasPosition: (x: number, y: number) => set({ canvasX: x, canvasY: y }),
+  
+  zoomIn: () => set((state) => ({ 
+    canvasScale: Math.min(5, state.canvasScale * 1.2) 
+  })),
+  
+  zoomOut: () => set((state) => ({ 
+    canvasScale: Math.max(0.1, state.canvasScale / 1.2) 
+  })),
+  
+  zoomToFit: () => {
+    // Reset to default view - could be enhanced to fit content
+    set({ canvasScale: 1, canvasX: 0, canvasY: 0 });
+  },
+  
+  resetView: () => set({ canvasScale: 1, canvasX: 0, canvasY: 0 }),
 }));

@@ -17,7 +17,12 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const {
     fontSize,
     fontFamily,
-    strokeWidth
+    strokeWidth,
+    canvasScale,
+    canvasX,
+    canvasY,
+    setCanvasScale,
+    setCanvasPosition
   } = useDesignStore();
   
   const stageRef = useRef<Konva.Stage>(null);
@@ -28,12 +33,16 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<number[]>([]);
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   
   // Helper function to generate unique IDs
   const generateId = () => Math.random().toString(36).substring(2, 9);
   
-  // Get cursor based on tool
+  // Get cursor based on tool and state
   const getCursorForTool = (tool: string): string => {
+    if (isPanning) return 'grabbing';
+    
     switch (tool) {
       case 'select': return 'default';
       case 'hand': return 'grab';
@@ -46,6 +55,34 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       default: return 'crosshair';
     }
   };
+
+  // Handle wheel zoom
+  const handleWheel = useCallback((e: KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const oldScale = canvasScale;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const mousePointTo = {
+      x: (pointer.x - canvasX) / oldScale,
+      y: (pointer.y - canvasY) / oldScale,
+    };
+
+    const direction = e.evt.deltaY > 0 ? -1 : 1;
+    const scaleBy = 1.05;
+    const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+    const clampedScale = Math.max(0.1, Math.min(5, newScale));
+
+    setCanvasScale(clampedScale);
+    setCanvasPosition(
+      pointer.x - mousePointTo.x * clampedScale,
+      pointer.y - mousePointTo.y * clampedScale
+    );
+  }, [canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition]);
   
   // Handle stage mouse down
   const handleStageMouseDown = useCallback((e: KonvaEventObject<MouseEvent>) => {
@@ -57,6 +94,33 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     
     // Check if we clicked on empty area
     const clickedOnEmpty = e.target === stage;
+    
+    // Handle panning with hand tool or space + drag
+    if (activeTool === 'hand' || (activeTool !== 'hand' && e.evt.button === 1)) {
+      setIsPanning(true);
+      setLastPanPoint({ x: pos.x, y: pos.y });
+      return;
+    }
+    
+    // Handle zoom tool
+    if (activeTool === 'zoom') {
+      const oldScale = canvasScale;
+      const mousePointTo = {
+        x: (pos.x - canvasX) / oldScale,
+        y: (pos.y - canvasY) / oldScale,
+      };
+
+      const scaleBy = 1.2;
+      const newScale = e.evt.shiftKey ? oldScale / scaleBy : oldScale * scaleBy;
+      const clampedScale = Math.max(0.1, Math.min(5, newScale));
+
+      setCanvasScale(clampedScale);
+      setCanvasPosition(
+        pos.x - mousePointTo.x * clampedScale,
+        pos.y - mousePointTo.y * clampedScale
+      );
+      return;
+    }
     
     if (activeTool === 'select') {
       if (clickedOnEmpty) {
@@ -139,17 +203,26 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         }
         break;
     }
-  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, shapes, onSelectionChange]);
+  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, shapes, onSelectionChange, canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition]);
   
   // Handle stage mouse move
   const handleStageMouseMove = useCallback((e: KonvaEventObject<MouseEvent>) => {
-    if (!isDrawing) return;
-    
     const stage = e.target.getStage();
     if (!stage) return;
     
     const pos = stage.getPointerPosition();
     if (!pos) return;
+
+    // Handle panning
+    if (isPanning) {
+      const dx = pos.x - lastPanPoint.x;
+      const dy = pos.y - lastPanPoint.y;
+      setCanvasPosition(canvasX + dx, canvasY + dy);
+      setLastPanPoint({ x: pos.x, y: pos.y });
+      return;
+    }
+    
+    if (!isDrawing) return;
     
     if (activeTool === 'rectangle' || activeTool === 'ellipse') {
       const lastShape = shapes[shapes.length - 1];
@@ -185,10 +258,16 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes(shapes.filter(s => s.id !== shape.id()));
       }
     }
-  }, [isDrawing, activeTool, shapes, currentPath]);
+  }, [isDrawing, activeTool, shapes, currentPath, isPanning, lastPanPoint, canvasX, canvasY, setCanvasPosition]);
   
   // Handle stage mouse up
   const handleStageMouseUp = useCallback(() => {
+    // Stop panning
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+    
     if (!isDrawing) return;
     
     setIsDrawing(false);
@@ -219,7 +298,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       });
       setShapes(updatedShapes);
     }
-  }, [isDrawing, activeTool, currentPath, shapes, strokeColor, fillColor, strokeWidth]);
+  }, [isDrawing, activeTool, currentPath, shapes, strokeColor, fillColor, strokeWidth, isPanning]);
   
   // Handle shape click for selection
   const handleShapeClick = useCallback((e: KonvaEventObject<MouseEvent>, shapeId: string) => {
@@ -298,9 +377,14 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         ref={stageRef}
         width={window.innerWidth - 250} // Adjust based on toolbar width
         height={window.innerHeight - 100} // Adjust based on menu/status bar
+        scaleX={canvasScale}
+        scaleY={canvasScale}
+        x={canvasX}
+        y={canvasY}
         onMouseDown={handleStageMouseDown}
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
+        onWheel={handleWheel}
         style={{ cursor: getCursorForTool(activeTool) }}
       >
         <Layer ref={layerRef}>

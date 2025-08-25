@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useDesignStore } from '../store/designStore';
+import { FileService } from '../services/FileService';
 import type { Tool } from '../store/designStore';
 
 const keyToToolMap: Record<string, Tool> = {
@@ -34,7 +35,16 @@ export function useKeyboardShortcuts() {
     sendBackward,
     selection,
     getSelectedObjects,
-    groups
+    groups,
+    // File operations
+    newProject,
+    loadProject,
+    saveProject,
+    hasUnsavedChanges,
+    // View operations
+    zoomIn,
+    zoomOut,
+    zoomToFit
   } = useDesignStore();
 
   useEffect(() => {
@@ -52,6 +62,58 @@ export function useKeyboardShortcuts() {
         const key = event.key.toLowerCase();
         
         switch (key) {
+          case 'n':
+            event.preventDefault();
+            if (hasUnsavedChanges) {
+              // Show confirmation dialog - in a real app, this would trigger the same flow as menu
+              if (confirm('You have unsaved changes. Creating a new project will lose these changes. Continue?')) {
+                newProject();
+              }
+            } else {
+              newProject();
+            }
+            return;
+          case 'o':
+            event.preventDefault();
+            FileService.loadProjectFromFile()
+              .then(projectData => loadProject(projectData))
+              .catch(error => console.error('Failed to open project:', error));
+            return;
+          case 's':
+            event.preventDefault();
+            if (event.shiftKey) {
+              // Ctrl+Shift+S - Save As
+              const name = prompt('Enter project name:', 'Untitled Project');
+              if (name && name.trim()) {
+                try {
+                  const state = useDesignStore.getState();
+                  state.saveProjectAs(name.trim());
+                } catch (error) {
+                  console.error('Save As failed:', error);
+                }
+              }
+            } else {
+              // Ctrl+S - Save
+              try {
+                saveProject();
+              } catch (error) {
+                console.error('Save failed:', error);
+              }
+            }
+            return;
+          case '=':
+          case '+':
+            event.preventDefault();
+            zoomIn();
+            return;
+          case '-':
+            event.preventDefault();
+            zoomOut();
+            return;
+          case '0':
+            event.preventDefault();
+            zoomToFit();
+            return;
           case 'a':
             event.preventDefault();
             selectAll();
@@ -191,6 +253,13 @@ export function useKeyboardShortcuts() {
     sendBackward,
     selection,
     getSelectedObjects,
-    groups
+    groups,
+    newProject,
+    loadProject,
+    saveProject,
+    hasUnsavedChanges,
+    zoomIn,
+    zoomOut,
+    zoomToFit
   ]);
 }
