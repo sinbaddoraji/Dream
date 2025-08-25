@@ -50,15 +50,14 @@ function App() {
       offset.bottom = statusBarHeight + 70; // Add minimized toolbar height to status bar height
     }
 
-    // Canvas should take all available space without padding
-    // Only add minimal padding when floating
+    // Only add minimal padding when toolbar is floating
     if (toolbar.position === 'floating') {
       // Add minimal padding around the canvas edges only when floating
-      if (offset.left === 0) offset.left = 4;
-      if (offset.right === rightSidebarWidth) offset.right = rightSidebarWidth + 4;
-      if (offset.top === 48) offset.top = 52; // 48 for menu bar + 4 padding
-      if (offset.bottom === statusBarHeight) offset.bottom = statusBarHeight + 4; // Add padding to status bar height
-      else if (offset.bottom === 0) offset.bottom = 4;
+      const padding = 4;
+      if (offset.left === 0) offset.left = padding;
+      if (offset.right === rightSidebarWidth) offset.right = rightSidebarWidth + padding;
+      if (offset.top === 48) offset.top = 48 + padding; // 48 for menu bar + padding
+      if (offset.bottom === statusBarHeight) offset.bottom = statusBarHeight + padding;
     }
 
     return offset;

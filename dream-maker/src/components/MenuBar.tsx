@@ -4,6 +4,7 @@ import { useTheme } from '../hooks/useTheme'
 import { useUIStore } from '../store/uiStore'
 import { useDesignStore } from '../store/designStore'
 import { FileService } from '../services/FileService'
+import { ImageService } from '../services/ImageService'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { ConfirmDialog, ExportDialog, SaveAsDialog } from './Modals'
 
@@ -18,6 +19,7 @@ export function MenuBar() {
     saveProject, 
     saveProjectAs, 
     exportProject,
+    importImage,
     zoomIn,
     zoomOut,
     zoomToFit
@@ -68,6 +70,16 @@ export function MenuBar() {
     setShowExportDialog(true)
   }
 
+  const handleImportImage = async () => {
+    try {
+      const file = await ImageService.selectImageFile()
+      await importImage(file)
+    } catch (error) {
+      console.error('Failed to import image:', error)
+      // Could show error toast here
+    }
+  }
+
   const handleExit = () => {
     if (hasUnsavedChanges) {
       setShowExitConfirm(true)
@@ -83,6 +95,9 @@ export function MenuBar() {
       items: [
         { label: 'New', shortcut: 'Ctrl+N', action: handleNew },
         { label: 'Open...', shortcut: 'Ctrl+O', action: handleOpen },
+        { type: 'separator' as const },
+        { label: 'Import Image...', shortcut: 'Ctrl+I', action: handleImportImage },
+        { type: 'separator' as const },
         { label: 'Save', shortcut: 'Ctrl+S', action: handleSave },
         { label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: handleSaveAs },
         { type: 'separator' as const },

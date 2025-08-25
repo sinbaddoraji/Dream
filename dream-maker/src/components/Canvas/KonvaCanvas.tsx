@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Ellipse, Line, Text, Transformer } from 'react-konva';
+import { Stage, Layer, Rect, Ellipse, Line, Text, Transformer, Image } from 'react-konva';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useTheme } from '../../hooks/useTheme';
@@ -22,7 +22,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     canvasX,
     canvasY,
     setCanvasScale,
-    setCanvasPosition
+    setCanvasPosition,
+    objects
   } = useDesignStore();
   
   const stageRef = useRef<Konva.Stage>(null);
@@ -35,9 +36,88 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const [currentPath, setCurrentPath] = useState<number[]>([]);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Helper function to generate unique IDs
   const generateId = () => Math.random().toString(36).substring(2, 9);
+  
+  // Update canvas size when container resizes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width: rect.width, height: rect.height });
+      }
+    };
+
+    // Initial size
+    updateCanvasSize();
+    
+    // Listen for window resize
+    window.addEventListener('resize', updateCanvasSize);
+    
+    // Use ResizeObserver if available for more precise container size tracking
+    let resizeObserver: ResizeObserver | null = null;
+    if ('ResizeObserver' in window) {
+      resizeObserver = new ResizeObserver(() => {
+        updateCanvasSize();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, []);
+  
+  // Load images when objects change
+  useEffect(() => {
+    const imageObjects = Object.values(objects).filter(obj => obj.type === 'image' && obj.imageData);
+    
+    imageObjects.forEach(obj => {
+      if (!obj.imageData || loadedImages.has(obj.id)) return;
+      
+      const img = new window.Image();
+      img.onload = () => {
+        setLoadedImages(prev => {
+          const newMap = new Map(prev);
+          newMap.set(obj.id, img);
+          return newMap;
+        });
+      };
+      img.src = obj.imageData;
+    });
+  }, [objects, loadedImages]);
+  
+  // Handle drag and drop for images
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) return;
+    
+    // Import the first image file (could be extended to handle multiple)
+    try {
+      const { importImage } = useDesignStore.getState();
+      await importImage(imageFiles[0]);
+    } catch (error) {
+      console.error('Failed to import dropped image:', error);
+    }
+  }, []);
   
   // Get cursor based on tool and state
   const getCursorForTool = (tool: string): string => {
@@ -344,25 +424,53 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     }
   }, [selectedId]);
   
-  // Render shape based on type
-  const renderShape = (shape: any) => {
+  // Render object based on type
+  const renderObject = (obj: any) => {
     const commonProps = {
-      key: shape.id,
-      id: shape.id,
-      onClick: (e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, shape.id),
-      onTransformEnd: (e: KonvaEventObject<Event>) => handleTransformEnd(e, shape.id),
-      draggable: activeTool === 'select' && shape.draggable
+      key: obj.id,
+      id: obj.id,
+      onClick: (e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, obj.id),
+      onTransformEnd: (e: KonvaEventObject<Event>) => handleTransformEnd(e, obj.id),
+      draggable: activeTool === 'select' && obj.draggable
     };
     
-    switch (shape.type) {
+    switch (obj.type) {
+      case 'shape':
+        // Handle legacy shape objects
+        if (obj.shapeType === 'rect') {
+          return <Rect {...commonProps} {...obj} />;
+        } else if (obj.shapeType === 'ellipse') {
+          return <Ellipse {...commonProps} {...obj} />;
+        }
+        return null;
       case 'rect':
-        return <Rect {...commonProps} {...shape} />;
+        return <Rect {...commonProps} {...obj} />;
       case 'ellipse':
-        return <Ellipse {...commonProps} {...shape} />;
+        return <Ellipse {...commonProps} {...obj} />;
       case 'line':
-        return <Line {...commonProps} {...shape} />;
+        return <Line {...commonProps} {...obj} />;
       case 'text':
-        return <Text {...commonProps} {...shape} />;
+        return <Text {...commonProps} {...obj} />;
+      case 'image':
+        const imageElement = loadedImages.get(obj.id);
+        if (!imageElement) return null;
+        
+        // Calculate initial size (scale down large images to fit screen nicely)
+        const maxSize = 300;
+        const scale = Math.min(maxSize / obj.naturalWidth!, maxSize / obj.naturalHeight!, 1);
+        const width = (obj.width || obj.naturalWidth! * scale);
+        const height = (obj.height || obj.naturalHeight! * scale);
+        
+        return (
+          <Image
+            {...commonProps}
+            image={imageElement}
+            x={obj.x || 100}
+            y={obj.y || 100}
+            width={width}
+            height={height}
+          />
+        );
       default:
         return null;
     }
@@ -370,13 +478,16 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   
   return (
     <div 
-      className="flex-1 overflow-hidden relative"
+      ref={containerRef}
+      className="w-full h-full overflow-hidden relative"
       style={{ backgroundColor: theme.colors.background.secondary }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <Stage
         ref={stageRef}
-        width={window.innerWidth - 250} // Adjust based on toolbar width
-        height={window.innerHeight - 100} // Adjust based on menu/status bar
+        width={canvasSize.width}
+        height={canvasSize.height}
         scaleX={canvasScale}
         scaleY={canvasScale}
         x={canvasX}
@@ -388,8 +499,11 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         style={{ cursor: getCursorForTool(activeTool) }}
       >
         <Layer ref={layerRef}>
-          {/* Render all shapes */}
-          {shapes.map(renderShape)}
+          {/* Render all objects */}
+          {Object.values(objects).filter(obj => obj.visible).map(renderObject)}
+          
+          {/* Render legacy shapes if any exist */}
+          {shapes.map(renderObject)}
           
           {/* Render current drawing path */}
           {isDrawing && currentPath.length > 0 && (activeTool === 'line' || activeTool === 'pen' || activeTool === 'brush') && (

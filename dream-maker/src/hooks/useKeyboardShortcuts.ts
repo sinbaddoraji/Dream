@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDesignStore } from '../store/designStore';
 import { FileService } from '../services/FileService';
+import { ImageService } from '../services/ImageService';
 import type { Tool } from '../store/designStore';
 
 const keyToToolMap: Record<string, Tool> = {
@@ -41,6 +42,7 @@ export function useKeyboardShortcuts() {
     loadProject,
     saveProject,
     hasUnsavedChanges,
+    importImage,
     // View operations
     zoomIn,
     zoomOut,
@@ -78,6 +80,12 @@ export function useKeyboardShortcuts() {
             FileService.loadProjectFromFile()
               .then(projectData => loadProject(projectData))
               .catch(error => console.error('Failed to open project:', error));
+            return;
+          case 'i':
+            event.preventDefault();
+            ImageService.selectImageFile()
+              .then(file => importImage(file))
+              .catch(error => console.error('Failed to import image:', error));
             return;
           case 's':
             event.preventDefault();
@@ -258,6 +266,7 @@ export function useKeyboardShortcuts() {
     loadProject,
     saveProject,
     hasUnsavedChanges,
+    importImage,
     zoomIn,
     zoomOut,
     zoomToFit

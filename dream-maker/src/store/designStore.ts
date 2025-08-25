@@ -31,11 +31,16 @@ export interface ToolConfig {
 export interface CanvasObject {
   id: string;
   konvaNode?: any; // Will store Konva node reference
-  type: 'shape' | 'text' | 'path' | 'group';
+  type: 'shape' | 'text' | 'path' | 'group' | 'image';
   locked: boolean;
   visible: boolean;
   name?: string;
   parentGroup?: string;
+  // Image-specific properties
+  imageSrc?: string;
+  imageData?: string; // Base64 data URL
+  naturalWidth?: number;
+  naturalHeight?: number;
 }
 
 export interface ObjectGroup {
@@ -144,6 +149,9 @@ interface DesignStore {
   sendToBack: (ids: string[]) => void;
   bringForward: (ids: string[]) => void;
   sendBackward: (ids: string[]) => void;
+  
+  // Image operations
+  importImage: (file: File) => Promise<string>;
   
   // Transform
   setTransformMode: (mode: 'move' | 'resize' | 'rotate' | null) => void;
@@ -622,4 +630,54 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   },
   
   resetView: () => set({ canvasScale: 1, canvasX: 0, canvasY: 0 }),
+  
+  // Image import
+  importImage: async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('File is not an image'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (!dataUrl) {
+          reject(new Error('Failed to read image file'));
+          return;
+        }
+
+        // Create an image element to get natural dimensions
+        const img = new window.Image();
+        img.onload = () => {
+          const imageId = generateId();
+          const imageObject: CanvasObject = {
+            id: imageId,
+            type: 'image',
+            locked: false,
+            visible: true,
+            name: file.name,
+            imageData: dataUrl,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+          };
+
+          get().addObject(imageObject);
+          resolve(imageId);
+        };
+        
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+        
+        img.src = dataUrl;
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file'));
+      };
+      
+      reader.readAsDataURL(file);
+    });
+  },
 }));
