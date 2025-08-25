@@ -167,6 +167,26 @@ interface DesignStore {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
+const generateObjectName = (type: string, objects: Record<string, CanvasObject>): string => {
+  const typeNames: Record<string, string> = {
+    'shape': 'Shape',
+    'text': 'Text',
+    'path': 'Path',
+    'group': 'Group',
+    'image': 'Image',
+    'rect': 'Rectangle',
+    'ellipse': 'Ellipse',
+    'line': 'Line'
+  };
+  
+  const baseName = typeNames[type] || 'Object';
+  const existingCount = Object.values(objects).filter(obj => 
+    (obj.name || '').startsWith(baseName)
+  ).length;
+  
+  return `${baseName} ${existingCount + 1}`;
+};
+
 export const useDesignStore = create<DesignStore>((set, get) => ({
   // Initial state
   projectName: 'Untitled Project',
@@ -203,10 +223,18 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   setFontFamily: (family) => set({ fontFamily: family }),
   
   // Object management
-  addObject: (object) => set((state) => ({
-    objects: { ...state.objects, [object.id]: object },
-    hasUnsavedChanges: true
-  })),
+  addObject: (object) => set((state) => {
+    // Generate a name if none provided
+    const objectWithName = {
+      ...object,
+      name: object.name || generateObjectName(object.type, state.objects)
+    };
+    
+    return {
+      objects: { ...state.objects, [object.id]: objectWithName },
+      hasUnsavedChanges: true
+    };
+  }),
   
   removeObject: (id) => set((state) => {
     const remaining = Object.fromEntries(

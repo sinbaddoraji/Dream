@@ -18,6 +18,10 @@ interface UIStore {
     isVisible: boolean;
     droppedTools: string[];
   };
+  leftSidebar: {
+    isVisible: boolean;
+    activeTab: 'layers';
+  };
   toolOrder: Tool[];
   
   setToolbarPosition: (position: DockPosition) => void;
@@ -28,6 +32,8 @@ interface UIStore {
   setRightSidebarVisible: (visible: boolean) => void;
   addToolToRightSidebar: (toolId: string) => void;
   removeToolFromRightSidebar: (toolId: string) => void;
+  setLeftSidebarVisible: (visible: boolean) => void;
+  setLeftSidebarActiveTab: (tab: 'layers') => void;
   resetToolbarToDefaults: () => void;
   setToolOrder: (order: Tool[]) => void;
   reorderTool: (fromIndex: number, toIndex: number) => void;
@@ -62,6 +68,10 @@ export const useUIStore = create<UIStore>()(
       rightSidebar: {
         isVisible: false,
         droppedTools: []
+      },
+      leftSidebar: {
+        isVisible: false,
+        activeTab: 'layers'
       },
       toolOrder: [...defaultToolOrder],
       
@@ -109,6 +119,16 @@ export const useUIStore = create<UIStore>()(
             droppedTools: state.rightSidebar.droppedTools.filter(id => id !== toolId)
           }
         })),
+
+      setLeftSidebarVisible: (isVisible) =>
+        set((state) => ({
+          leftSidebar: { ...state.leftSidebar, isVisible }
+        })),
+
+      setLeftSidebarActiveTab: (activeTab) =>
+        set((state) => ({
+          leftSidebar: { ...state.leftSidebar, activeTab }
+        })),
       
       resetToolbarToDefaults: () => 
         set({ toolbar: { ...defaultToolbarState } }),
@@ -131,6 +151,7 @@ export const useUIStore = create<UIStore>()(
         toolbar: state.toolbar,
         showStatusBar: state.showStatusBar,
         rightSidebar: state.rightSidebar,
+        leftSidebar: state.leftSidebar,
         toolOrder: state.toolOrder
       }),
     }

@@ -3,6 +3,7 @@ import { CanvasContainer } from './components/Canvas/CanvasContainer'
 import { StatusBar } from './components/StatusBar'
 import { MenuBar } from './components/MenuBar'
 import { RightSidebar } from './components/RightSidebar'
+import { LeftSidebar } from './components/LeftSidebar'
 import { useDesignStore } from './store/designStore'
 import { useUIStore } from './store/uiStore'
 import { useTheme } from './hooks/useTheme'
@@ -13,7 +14,7 @@ import './App.css'
 function App() {
   const { theme } = useTheme();
   const { activeTool, fillColor, strokeColor, setFillColor, setStrokeColor, setSelectedItems } = useDesignStore()
-  const { toolbar, showStatusBar, rightSidebar } = useUIStore();
+  const { toolbar, showStatusBar, rightSidebar, leftSidebar } = useUIStore();
   
   useKeyboardShortcuts();
 
@@ -25,17 +26,18 @@ function App() {
     // Start with menu bar height (48px) and status bar height (24px if visible)
     const statusBarHeight = showStatusBar ? 24 : 0;
     const rightSidebarWidth = rightSidebar.isVisible ? 256 : 0; // 64 * 4 = 256px
+    const leftSidebarWidth = leftSidebar.isVisible ? 256 : 0; // 64 * 4 = 256px
     const offset = { 
       top: 48, 
-      left: 0, 
+      left: leftSidebarWidth, 
       right: rightSidebarWidth, 
       bottom: statusBarHeight 
     };
     
     if (toolbar.position === 'left' && !toolbar.isMinimized) {
-      offset.left = 200;
+      offset.left = leftSidebarWidth + 200;
     } else if (toolbar.position === 'left' && toolbar.isMinimized) {
-      offset.left = 50;
+      offset.left = leftSidebarWidth + 50;
     } else if (toolbar.position === 'right' && !toolbar.isMinimized) {
       offset.right = rightSidebarWidth + 200;
     } else if (toolbar.position === 'right' && toolbar.isMinimized) {
@@ -54,7 +56,7 @@ function App() {
     if (toolbar.position === 'floating') {
       // Add minimal padding around the canvas edges only when floating
       const padding = 4;
-      if (offset.left === 0) offset.left = padding;
+      if (offset.left === leftSidebarWidth) offset.left = leftSidebarWidth + padding;
       if (offset.right === rightSidebarWidth) offset.right = rightSidebarWidth + padding;
       if (offset.top === 48) offset.top = 48 + padding; // 48 for menu bar + padding
       if (offset.bottom === statusBarHeight) offset.bottom = statusBarHeight + padding;
@@ -100,6 +102,7 @@ function App() {
         </div>
 
         <StatusBar />
+        <LeftSidebar />
         <RightSidebar />
       </div>
     </div>

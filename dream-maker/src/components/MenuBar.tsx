@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { PanelRight } from 'lucide-react'
+import { PanelRight, PanelLeft } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { useUIStore } from '../store/uiStore'
 import { useDesignStore } from '../store/designStore'
@@ -10,7 +10,7 @@ import { ConfirmDialog, ExportDialog, SaveAsDialog } from './Modals'
 
 export function MenuBar() {
   const { theme } = useTheme()
-  const { rightSidebar, setRightSidebarVisible } = useUIStore()
+  const { rightSidebar, leftSidebar, setRightSidebarVisible, setLeftSidebarVisible } = useUIStore()
   const { 
     projectName, 
     hasUnsavedChanges,
@@ -130,6 +130,15 @@ export function MenuBar() {
         { label: 'Show Grid', action: () => console.log('Show Grid') },
         { label: 'Show Rulers', action: () => console.log('Show Rulers') },
         { type: 'separator' as const },
+        { 
+          label: leftSidebar.isVisible ? 'Hide Object Layers' : 'Show Object Layers', 
+          action: () => setLeftSidebarVisible(!leftSidebar.isVisible) 
+        },
+        { 
+          label: rightSidebar.isVisible ? 'Hide Favorites Sidebar' : 'Show Favorites Sidebar', 
+          action: () => setRightSidebarVisible(!rightSidebar.isVisible) 
+        },
+        { type: 'separator' as const },
         { label: 'Fullscreen', shortcut: 'F11', action: () => console.log('Fullscreen') }
       ]
     },
@@ -235,6 +244,15 @@ export function MenuBar() {
       </div>
       
       <div className="flex items-center space-x-2">
+        <button
+          onClick={() => setLeftSidebarVisible(!leftSidebar.isVisible)}
+          className={`p-2 rounded transition-colors ${
+            leftSidebar.isVisible ? 'bg-blue-500 text-white' : 'hover:bg-gray-200'
+          }`}
+          title="Toggle Object Layers Sidebar"
+        >
+          <PanelLeft size={16} />
+        </button>
         <button
           onClick={() => setRightSidebarVisible(!rightSidebar.isVisible)}
           className={`p-2 rounded transition-colors ${
