@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.12",
     "@types/react-color": "^3.0.13",
+    "autoprefixer": "^10.4.21",
     "konva": "^9.3.22",
     "lucide-react": "^0.541.0",
     "postcss": "^8.5.6",
