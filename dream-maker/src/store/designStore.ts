@@ -1,10 +1,7 @@
 import { create } from 'zustand';
-import paper from 'paper';
 
 export type Tool = 
   | 'select' 
-  | 'lasso'
-  | 'magic-wand'
   | 'shapes'
   | 'rectangle' 
   | 'ellipse' 
@@ -16,7 +13,6 @@ export type Tool =
   | 'line' 
   | 'pen' 
   | 'brush'
-  | 'paintbrush'
   | 'eraser'
   | 'text' 
   | 'crop'
@@ -33,7 +29,7 @@ export interface ToolConfig {
 
 export interface CanvasObject {
   id: string;
-  paperItem: paper.Item;
+  konvaNode?: any; // Will store Konva node reference
   type: 'shape' | 'text' | 'path' | 'group';
   locked: boolean;
   visible: boolean;
@@ -52,7 +48,7 @@ export interface ObjectGroup {
 export interface SelectionState {
   selectedIds: string[];
   isSelecting: boolean;
-  selectionBounds?: paper.Rectangle;
+  selectionBounds?: any;
   transformMode: 'move' | 'resize' | 'rotate' | null;
 }
 
@@ -65,6 +61,8 @@ interface DesignStore {
   fillColor: string;
   strokeColor: string;
   strokeWidth: number;
+  fontSize: number;
+  fontFamily: string;
   
   // Objects and selection
   objects: Record<string, CanvasObject>;
@@ -81,6 +79,8 @@ interface DesignStore {
   setFillColor: (color: string) => void;
   setStrokeColor: (color: string) => void;
   setStrokeWidth: (width: number) => void;
+  setFontSize: (size: number) => void;
+  setFontFamily: (family: string) => void;
   
   // Object management
   addObject: (object: CanvasObject) => void;
@@ -118,11 +118,11 @@ interface DesignStore {
   
   // Transform
   setTransformMode: (mode: 'move' | 'resize' | 'rotate' | null) => void;
-  setSelectionBounds: (bounds?: paper.Rectangle) => void;
+  setSelectionBounds: (bounds?: any) => void;
   
   // Legacy compatibility
-  selectedItems: paper.Item[];
-  setSelectedItems: (items: paper.Item[]) => void;
+  selectedItems: any[];
+  setSelectedItems: (items: any[]) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -134,6 +134,8 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   fillColor: '#ffffff',
   strokeColor: '#000000',
   strokeWidth: 2,
+  fontSize: 16,
+  fontFamily: 'Arial',
   objects: {},
   groups: {},
   selection: {
@@ -151,6 +153,8 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   setFillColor: (color) => set({ fillColor: color }),
   setStrokeColor: (color) => set({ strokeColor: color }),
   setStrokeWidth: (width) => set({ strokeWidth: width }),
+  setFontSize: (size) => set({ fontSize: size }),
+  setFontFamily: (family) => set({ fontFamily: family }),
   
   // Object management
   addObject: (object) => set((state) => ({
@@ -178,7 +182,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     const validIds = ids.filter(id => state.objects[id] && !state.objects[id].locked);
     return {
       selection: { ...state.selection, selectedIds: validIds },
-      selectedItems: validIds.map(id => state.objects[id]?.paperItem).filter(Boolean) // Legacy compatibility
+      selectedItems: validIds.map(id => state.objects[id]?.konvaNode).filter(Boolean) // Legacy compatibility
     };
   }),
   
@@ -187,7 +191,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     const newSelection = [...new Set([...state.selection.selectedIds, ...validIds])];
     return {
       selection: { ...state.selection, selectedIds: newSelection },
-      selectedItems: newSelection.map(id => state.objects[id]?.paperItem).filter(Boolean) // Legacy compatibility
+      selectedItems: newSelection.map(id => state.objects[id]?.konvaNode).filter(Boolean) // Legacy compatibility
     };
   }),
   
@@ -195,7 +199,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     const newSelection = state.selection.selectedIds.filter(id => !ids.includes(id));
     return {
       selection: { ...state.selection, selectedIds: newSelection },
-      selectedItems: newSelection.map(id => state.objects[id]?.paperItem).filter(Boolean) // Legacy compatibility
+      selectedItems: newSelection.map(id => state.objects[id]?.konvaNode).filter(Boolean) // Legacy compatibility
     };
   }),
   
@@ -208,7 +212,7 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     const allUnlockedIds = Object.keys(state.objects).filter(id => !state.objects[id].locked);
     return {
       selection: { ...state.selection, selectedIds: allUnlockedIds },
-      selectedItems: allUnlockedIds.map(id => state.objects[id]?.paperItem).filter(Boolean) // Legacy compatibility
+      selectedItems: allUnlockedIds.map(id => state.objects[id]?.konvaNode).filter(Boolean) // Legacy compatibility
     };
   }),
   
@@ -344,11 +348,11 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       Object.entries(state.objects).filter(([id]) => !ids.includes(id))
     );
     
-    // Remove objects from their Paper.js items
+    // Remove objects from their Konva nodes if they exist
     ids.forEach(id => {
       const obj = state.objects[id];
-      if (obj?.paperItem) {
-        obj.paperItem.remove();
+      if (obj?.konvaNode) {
+        obj.konvaNode.destroy();
       }
     });
     
@@ -364,15 +368,13 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     
     ids.forEach(id => {
       const obj = state.objects[id];
-      if (obj?.paperItem) {
+      if (obj?.konvaNode) {
         const newId = generateId();
-        const clonedItem = obj.paperItem.clone();
-        clonedItem.position = clonedItem.position.add(new paper.Point(20, 20));
+        // Note: Konva node cloning would need to be handled in the canvas component
         
         const newObj: CanvasObject = {
           ...obj,
           id: newId,
-          paperItem: clonedItem,
           name: `${obj.name || 'Object'} Copy`
         };
         
@@ -384,12 +386,12 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
     return newIds;
   },
   
-  // Z-order operations
+  // Z-order operations (will need to be implemented in Konva canvas)
   bringToFront: (ids) => {
     ids.forEach(id => {
       const obj = get().objects[id];
-      if (obj?.paperItem) {
-        obj.paperItem.bringToFront();
+      if (obj?.konvaNode) {
+        obj.konvaNode.moveToTop();
       }
     });
   },
@@ -397,8 +399,8 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   sendToBack: (ids) => {
     ids.forEach(id => {
       const obj = get().objects[id];
-      if (obj?.paperItem) {
-        obj.paperItem.sendToBack();
+      if (obj?.konvaNode) {
+        obj.konvaNode.moveToBottom();
       }
     });
   },
@@ -406,8 +408,8 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   bringForward: (ids) => {
     ids.forEach(id => {
       const obj = get().objects[id];
-      if (obj?.paperItem) {
-        obj.paperItem.insertAbove(obj.paperItem.nextSibling);
+      if (obj?.konvaNode) {
+        obj.konvaNode.moveUp();
       }
     });
   },
@@ -415,8 +417,8 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   sendBackward: (ids) => {
     ids.forEach(id => {
       const obj = get().objects[id];
-      if (obj?.paperItem) {
-        obj.paperItem.insertBelow(obj.paperItem.previousSibling);
+      if (obj?.konvaNode) {
+        obj.konvaNode.moveDown();
       }
     });
   },

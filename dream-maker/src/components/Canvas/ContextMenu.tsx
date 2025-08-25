@@ -239,7 +239,7 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
             }}
           >
             <div className="flex items-center space-x-2">
-              <Icon size={16} />
+              {Icon && <Icon size={16} />}
               <span>{item.label}</span>
             </div>
             {item.shortcut && (

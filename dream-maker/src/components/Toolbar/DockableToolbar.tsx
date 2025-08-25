@@ -12,12 +12,9 @@ import {
   Minus, 
   Pen,
   Brush,
-  PaintBucket,
   Eraser,
   Type,
   Crop,
-  Lasso,
-  WandSparkles,
   Pipette, 
   ZoomIn, 
   Hand,
@@ -33,30 +30,25 @@ import { ToolButton } from './ToolButton';
 import { ColorPicker } from './ColorPicker';
 import { ToolOptions } from './ToolOptions';
 import { ShapeSelector } from './ShapeSelector';
-import { PropertiesPanel } from '../Panels/PropertiesPanel';
+// import { PropertiesPanel } from '../Panels/PropertiesPanel';
 
 const toolConfigs: ToolConfig[] = [
-  // Selection Tools (Row 1-2)
+  // Selection Tools
   { id: 'select', label: 'Select', shortcut: 'V', group: 'tools' },
-  { id: 'lasso', label: 'Lasso', shortcut: 'A', group: 'tools' },
   
-  // Drawing Tools (Row 3-5)  
+  // Drawing Tools  
   { id: 'pen', label: 'Pen', shortcut: 'P', group: 'tools' },
   { id: 'brush', label: 'Brush', shortcut: 'B', group: 'tools' },
-  { id: 'paintbrush', label: 'Paint Brush', shortcut: 'K', group: 'tools' },
   { id: 'eraser', label: 'Eraser', shortcut: 'D', group: 'tools' },
   
-  // Shapes & Text (Row 6-7)
+  // Shapes & Text
   { id: 'shapes', label: 'Shapes', shortcut: 'G', group: 'tools' },
   { id: 'text', label: 'Text', shortcut: 'T', group: 'tools' },
   
-  // Utilities (Row 8-10)
-  { id: 'magic-wand', label: 'Magic Wand', shortcut: 'W', group: 'tools' },
+  // Utilities
   { id: 'eyedropper', label: 'Eyedropper', shortcut: 'I', group: 'tools' },
   { id: 'crop', label: 'Crop', shortcut: 'C', group: 'tools' },
   { id: 'zoom', label: 'Zoom', shortcut: 'Z', group: 'tools' },
-  
-  // Navigation (Row 11)
   { id: 'hand', label: 'Hand', shortcut: 'H', group: 'tools' },
 ];
 
@@ -101,8 +93,6 @@ export function DockableToolbar({
   const getToolIcon = (toolId: Tool) => {
     const icons = {
       select: MousePointer2,
-      lasso: Lasso,
-      'magic-wand': WandSparkles,
       shapes: Square, // Default shape icon
       rectangle: Square,
       ellipse: Circle,
@@ -114,7 +104,6 @@ export function DockableToolbar({
       line: Minus,
       pen: Pen,
       brush: Brush,
-      paintbrush: PaintBucket,
       eraser: Eraser,
       text: Type,
       crop: Crop,
@@ -294,12 +283,12 @@ export function DockableToolbar({
             <ToolOptions />
           </div>
 
-          {/* Properties Panel - only show when docked left */}
-          {toolbar.position === 'left' && (
+          {/* Properties Panel - temporarily disabled during Konva migration */}
+          {/* toolbar.position === 'left' && (
             <div className="border-t mt-2 pt-2" style={{ borderColor: theme.colors.border.primary }}>
               <PropertiesPanel compact={true} />
             </div>
-          )}
+          ) */}
         </div>
       )}
     </div>

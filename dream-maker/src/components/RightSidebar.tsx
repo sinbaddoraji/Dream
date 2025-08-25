@@ -53,10 +53,8 @@ export function RightSidebar() {
   const getToolLabel = (toolId: string) => {
     const labels: Record<string, string> = {
       select: 'Select',
-      lasso: 'Lasso',
       pen: 'Pen',
       brush: 'Brush',
-      paintbrush: 'Paint Brush',
       eraser: 'Eraser',
       shapes: 'Shapes',
       rectangle: 'Rectangle',
@@ -68,7 +66,6 @@ export function RightSidebar() {
       octagon: 'Octagon',
       line: 'Line',
       text: 'Text',
-      'magic-wand': 'Magic Wand',
       eyedropper: 'Eyedropper',
       crop: 'Crop',
       zoom: 'Zoom',

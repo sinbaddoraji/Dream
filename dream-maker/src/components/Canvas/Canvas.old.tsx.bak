@@ -25,7 +25,9 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
     selection,
     strokeWidth,
     setFillColor,
-    setStrokeColor
+    setStrokeColor,
+    fontSize,
+    fontFamily
   } = useDesignStore();
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -219,7 +221,7 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
 
     currentToolRef.current = tool;
     tool.activate();
-  }, [activeTool, fillColor, strokeColor, strokeWidth, objects, selection, addObject, deleteObjects, selectObjects, addToSelection, clearSelection, onSelectionChange, setFillColor, setStrokeColor]);
+  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, objects, selection, addObject, deleteObjects, selectObjects, addToSelection, clearSelection, onSelectionChange, setFillColor, setStrokeColor]);
 
   const createSelectTool = () => {
     const tool = new paper.Tool();
@@ -558,19 +560,118 @@ export function Canvas({ activeTool, fillColor, strokeColor, onSelectionChange }
 
   const createTextTool = () => {
     const tool = new paper.Tool();
+    let activeTextItem: paper.PointText | null = null;
+    let textInput: HTMLInputElement | null = null;
+
+    const createTextInput = (point: paper.Point, existingText?: paper.PointText) => {
+      // Remove any existing input
+      if (textInput) {
+        textInput.remove();
+        textInput = null;
+      }
+
+      // Create an HTML input element
+      textInput = document.createElement('input');
+      textInput.type = 'text';
+      textInput.style.position = 'absolute';
+      textInput.style.zIndex = '1000';
+      textInput.style.border = '2px solid #0066ff';
+      textInput.style.padding = '4px';
+      textInput.style.fontSize = existingText ? `${existingText.fontSize}px` : `${fontSize}px`;
+      textInput.style.fontFamily = existingText ? existingText.fontFamily : fontFamily;
+      textInput.style.background = 'white';
+      textInput.style.color = 'black';
+      textInput.style.minWidth = '150px';
+      
+      // Position the input at the click point
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (canvasRect) {
+        // Convert Paper.js point to screen coordinates
+        const viewPoint = paper.view.projectToView(point);
+        textInput.style.left = `${canvasRect.left + viewPoint.x}px`;
+        textInput.style.top = `${canvasRect.top + viewPoint.y - 10}px`;
+      }
+
+      // Set initial value if editing existing text
+      if (existingText && existingText.content) {
+        textInput.value = existingText.content;
+        activeTextItem = existingText;
+      }
+
+      // Add input to document body
+      document.body.appendChild(textInput);
+      textInput.focus();
+      textInput.select();
+
+      // Handle input completion
+      const completeTextInput = () => {
+        if (textInput && textInput.value.trim()) {
+          if (activeTextItem) {
+            // Update existing text
+            activeTextItem.content = textInput.value;
+          } else {
+            // Create new text
+            const text = new paper.PointText({
+              point: point,
+              content: textInput.value,
+              fillColor: new paper.Color(fillColor),
+              fontFamily: fontFamily,
+              fontSize: fontSize,
+              justification: 'left'
+            });
+            
+            const canvasObject = createCanvasObject(text, 'text');
+            addObject(canvasObject);
+          }
+        }
+        
+        // Clean up
+        if (textInput) {
+          textInput.remove();
+          textInput = null;
+        }
+        activeTextItem = null;
+      };
+
+      // Event handlers
+      textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          completeTextInput();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          if (textInput) {
+            textInput.remove();
+            textInput = null;
+          }
+          activeTextItem = null;
+        }
+      });
+
+      textInput.addEventListener('blur', () => {
+        // Small delay to allow for clicking elsewhere
+        setTimeout(completeTextInput, 100);
+      });
+    };
 
     tool.onMouseDown = (event: paper.ToolEvent) => {
-      const text = new paper.PointText({
-        point: event.point,
-        content: 'Text',
-        fillColor: new paper.Color(fillColor),
-        fontFamily: 'Arial',
-        fontSize: 16
+      // Check if clicking on existing text
+      const hitResult = paper.project.hitTest(event.point, {
+        fill: true,
+        tolerance: 5,
+        class: paper.PointText
       });
-      
-      const canvasObject = createCanvasObject(text, 'text');
-      addObject(canvasObject);
+
+      if (hitResult && hitResult.item instanceof paper.PointText) {
+        // Edit existing text
+        createTextInput(event.point, hitResult.item as paper.PointText);
+      } else {
+        // Create new text
+        createTextInput(event.point);
+      }
     };
+
+    // Note: We'll clean up the input when the tool changes via the useEffect cleanup
 
     return tool;
   };

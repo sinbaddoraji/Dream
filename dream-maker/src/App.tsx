@@ -17,7 +17,7 @@ function App() {
   
   useKeyboardShortcuts();
 
-  const handleSelectionChange = (items: paper.Item[]) => {
+  const handleSelectionChange = (items: any[]) => {
     setSelectedItems(items)
   }
 

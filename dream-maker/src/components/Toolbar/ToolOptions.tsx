@@ -9,7 +9,6 @@ export function ToolOptions() {
     switch (activeTool) {
       case 'pen':
       case 'brush':
-      case 'paintbrush':
         return (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -103,14 +102,55 @@ export function ToolOptions() {
           </div>
         );
 
-      case 'text':
+      case 'text': {
+        const { fontSize, fontFamily, setFontSize, setFontFamily } = useDesignStore.getState();
         return (
-          <div className="space-y-1">
-            <div className="text-[10px]" style={{ color: theme.colors.text.secondary }}>
-              Font: 16px
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <span className="text-[10px]" style={{ color: theme.colors.text.secondary }}>
+                Font Family
+              </span>
+              <select
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                className="w-full text-[10px] p-1 rounded"
+                style={{
+                  backgroundColor: theme.colors.surface.secondary,
+                  color: theme.colors.text.primary,
+                  borderColor: theme.colors.border.primary
+                }}
+              >
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Comic Sans MS">Comic Sans MS</option>
+                <option value="Impact">Impact</option>
+                <option value="Trebuchet MS">Trebuchet MS</option>
+                <option value="Palatino">Palatino</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px]" style={{ color: theme.colors.text.secondary }}>
+                Size
+              </span>
+              <input
+                type="range"
+                min="8"
+                max="72"
+                value={fontSize}
+                onChange={(e) => setFontSize(parseInt(e.target.value))}
+                className="flex-1 h-1"
+              />
+              <span className="text-[10px] w-6" style={{ color: theme.colors.text.secondary }}>
+                {fontSize}px
+              </span>
             </div>
           </div>
         );
+      }
 
       default:
         return null;

@@ -4,12 +4,9 @@ import type { Tool } from '../store/designStore';
 
 const keyToToolMap: Record<string, Tool> = {
   'v': 'select',
-  'a': 'lasso',
-  'w': 'magic-wand',
   'g': 'shapes',
   'p': 'pen',
   'b': 'brush',
-  'k': 'paintbrush',
   'd': 'eraser',
   't': 'text',
   'c': 'crop',
@@ -158,7 +155,8 @@ export function useKeyboardShortcuts() {
             }
             
             selectedObjects.forEach(obj => {
-              obj.paperItem.position = obj.paperItem.position.add(new paper.Point(deltaX, deltaY));
+              // For now, skip nudging as it needs Konva implementation
+              console.log('Nudging object:', obj.id, deltaX, deltaY);
             });
           }
           return;
