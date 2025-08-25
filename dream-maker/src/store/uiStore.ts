@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { Tool } from './designStore';
 
 export type DockPosition = 'left' | 'right' | 'top' | 'bottom' | 'floating';
 
@@ -17,6 +18,7 @@ interface UIStore {
     isVisible: boolean;
     droppedTools: string[];
   };
+  toolOrder: Tool[];
   
   setToolbarPosition: (position: DockPosition) => void;
   setToolbarMinimized: (minimized: boolean) => void;
@@ -27,6 +29,9 @@ interface UIStore {
   addToolToRightSidebar: (toolId: string) => void;
   removeToolFromRightSidebar: (toolId: string) => void;
   resetToolbarToDefaults: () => void;
+  setToolOrder: (order: Tool[]) => void;
+  reorderTool: (fromIndex: number, toIndex: number) => void;
+  resetToolOrder: () => void;
 }
 
 const defaultToolbarState: ToolbarState = {
@@ -35,6 +40,19 @@ const defaultToolbarState: ToolbarState = {
   floatingPosition: { x: 20, y: 100 },
   size: { width: 200, height: 400 }
 };
+
+const defaultToolOrder: Tool[] = [
+  'select',
+  'pen', 
+  'brush',
+  'eraser',
+  'shapes',
+  'text',
+  'eyedropper',
+  'crop',
+  'zoom',
+  'hand'
+];
 
 export const useUIStore = create<UIStore>()(
   persist(
@@ -45,6 +63,7 @@ export const useUIStore = create<UIStore>()(
         isVisible: false,
         droppedTools: []
       },
+      toolOrder: [...defaultToolOrder],
       
       setToolbarPosition: (position) => 
         set((state) => ({ 
@@ -92,14 +111,27 @@ export const useUIStore = create<UIStore>()(
         })),
       
       resetToolbarToDefaults: () => 
-        set({ toolbar: { ...defaultToolbarState } })
+        set({ toolbar: { ...defaultToolbarState } }),
+      
+      setToolOrder: (toolOrder: Tool[]) => set({ toolOrder }),
+      
+      reorderTool: (fromIndex: number, toIndex: number) => 
+        set((state) => {
+          const newOrder = [...state.toolOrder];
+          const [movedTool] = newOrder.splice(fromIndex, 1);
+          newOrder.splice(toIndex, 0, movedTool);
+          return { toolOrder: newOrder };
+        }),
+        
+      resetToolOrder: () => set({ toolOrder: [...defaultToolOrder] })
     }),
     {
       name: 'dream-maker-ui-preferences',
       partialize: (state) => ({ 
         toolbar: state.toolbar,
         showStatusBar: state.showStatusBar,
-        rightSidebar: state.rightSidebar
+        rightSidebar: state.rightSidebar,
+        toolOrder: state.toolOrder
       }),
     }
   )

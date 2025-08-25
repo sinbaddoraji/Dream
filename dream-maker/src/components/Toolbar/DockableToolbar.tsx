@@ -26,7 +26,8 @@ import {
 import { useDesignStore, type Tool, type ToolConfig } from '../../store/designStore';
 import { useUIStore, type DockPosition } from '../../store/uiStore';
 import { useTheme } from '../../hooks/useTheme';
-import { ToolButton } from './ToolButton';
+import { DraggableToolButton } from './DraggableToolButton';
+import { ToolbarContextMenu } from './ToolbarContextMenu';
 import { ColorPicker } from './ColorPicker';
 import { ToolOptions } from './ToolOptions';
 import { ShapeSelector } from './ShapeSelector';
@@ -77,19 +78,29 @@ export function DockableToolbar({
   const { 
     toolbar, 
     showStatusBar,
+    toolOrder,
     setToolbarPosition, 
     setToolbarMinimized,
     setToolbarFloatingPosition,
-    setToolbarSize 
+    setToolbarSize,
+    reorderTool
   } = useUIStore();
   const { theme } = useTheme();
   
   const [isDragging, setIsDragging] = useState(false);
   const [dragHoverZone, setDragHoverZone] = useState<DockPosition | null>(null);
+  const [draggedToolId, setDraggedToolId] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const rndRef = useRef<InstanceType<typeof Rnd> | null>(null);
 
   const isFloating = toolbar.position === 'floating';
   const isDocked = !isFloating;
+
+  // Create ordered tool configurations based on user preferences
+  const orderedToolConfigs = toolOrder.map(toolId => 
+    toolConfigs.find(config => config.id === toolId)!
+  ).filter(Boolean);
 
   const getToolIcon = (toolId: Tool) => {
     const icons = {
@@ -162,6 +173,45 @@ export function DockableToolbar({
   const toggleMinimized = () => {
     setToolbarMinimized(!toolbar.isMinimized);
   };
+
+  const handleToolDragStart = useCallback((_e: React.DragEvent, toolId: string) => {
+    setDraggedToolId(toolId);
+  }, []);
+
+  const handleToolDragEnd = useCallback(() => {
+    setDraggedToolId(null);
+    setDragOverIndex(null);
+  }, []);
+
+  const handleToolDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }, []);
+
+  const handleToolDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const draggedToolId = e.dataTransfer.getData('application/x-tool-id');
+    
+    if (!draggedToolId) return;
+    
+    const dragIndex = toolOrder.indexOf(draggedToolId as Tool);
+    
+    if (dragIndex !== -1 && dragIndex !== dropIndex) {
+      reorderTool(dragIndex, dropIndex);
+    }
+    
+    setDraggedToolId(null);
+    setDragOverIndex(null);
+  }, [toolOrder, reorderTool]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
 
   const getDockedStyle = (position: DockPosition) => {
     const baseStyle = {
@@ -241,12 +291,15 @@ export function DockableToolbar({
       {!toolbar.isMinimized && (
         <div className="flex-1 p-2 overflow-hidden flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className={`grid gap-2 ${
-              toolbar.position === 'top' || toolbar.position === 'bottom' 
-                ? `grid-cols-${Math.min(toolConfigs.length, 8)}` 
-                : 'grid-cols-2'
-            }`}>
-              {toolConfigs.map((toolConfig) => {
+            <div 
+              className={`grid gap-2 ${
+                toolbar.position === 'top' || toolbar.position === 'bottom' 
+                  ? `grid-cols-${Math.min(orderedToolConfigs.length, 8)}` 
+                  : 'grid-cols-2'
+              }`}
+              onContextMenu={handleContextMenu}
+            >
+              {orderedToolConfigs.map((toolConfig, index) => {
                 if (toolConfig.id === 'shapes') {
                   return (
                     <ShapeSelector
@@ -262,12 +315,18 @@ export function DockableToolbar({
                 
                 const IconComponent = getToolIcon(toolConfig.id);
                 return (
-                  <ToolButton
+                  <DraggableToolButton
                     key={toolConfig.id}
                     tool={toolConfig}
                     icon={IconComponent}
                     isActive={activeTool === toolConfig.id}
                     onClick={() => setActiveTool(toolConfig.id)}
+                    onDragStart={(e) => handleToolDragStart(e, toolConfig.id)}
+                    onDragEnd={handleToolDragEnd}
+                    onDragOver={(e) => handleToolDragOver(e, index)}
+                    onDrop={(e) => handleToolDrop(e, index)}
+                    isDragOver={dragOverIndex === index}
+                    isBeingDragged={draggedToolId === toolConfig.id}
                   />
                 );
               })}
@@ -316,6 +375,15 @@ export function DockableToolbar({
         }}
       >
         {renderToolbarContent()}
+        
+        {/* Context Menu for docked toolbar */}
+        {contextMenu && (
+          <ToolbarContextMenu 
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={closeContextMenu}
+          />
+        )}
       </div>
     );
   }
@@ -376,6 +444,15 @@ export function DockableToolbar({
           {renderToolbarContent()}
         </div>
       </Rnd>
+      
+      {/* Context Menu */}
+      {contextMenu && (
+        <ToolbarContextMenu 
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={closeContextMenu}
+        />
+      )}
     </>
   );
 }
