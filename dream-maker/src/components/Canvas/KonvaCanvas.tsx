@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Ellipse, Line, Text, Transformer, Image } from 'react-konva';
+import { Stage, Layer, Rect, Ellipse, Line, Text, Transformer, Image, RegularPolygon, Star } from 'react-konva';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useTheme } from '../../hooks/useTheme';
@@ -243,6 +243,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           y: pos.y,
           radiusX: 0,
           radiusY: 0,
+          startX: pos.x, // Store the starting point for proper calculation
+          startY: pos.y, // Store the starting point for proper calculation
           fill: fillColor,
           stroke: strokeColor,
           strokeWidth: strokeWidth,
@@ -294,6 +296,97 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           addAction('delete_object', [shapeId], { position: { x: pos.x, y: pos.y } });
         }
         break;
+
+      case 'triangle':
+        const triangleId = generateId();
+        const newTriangle = {
+          id: triangleId,
+          type: 'triangle',
+          x: pos.x,
+          y: pos.y,
+          radius: 5, // Start with minimum visible radius
+          sides: 3,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+          draggable: false
+        };
+        setShapes([...shapes, newTriangle]);
+        setIsDrawing(true);
+        break;
+        
+      case 'star':
+        const starId = generateId();
+        const newStar = {
+          id: starId,
+          type: 'star',
+          x: pos.x,
+          y: pos.y,
+          innerRadius: 4, // Start with minimum visible inner radius
+          outerRadius: 10, // Start with minimum visible outer radius
+          numPoints: 5,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+          draggable: false
+        };
+        setShapes([...shapes, newStar]);
+        setIsDrawing(true);
+        break;
+        
+      case 'pentagon':
+        const pentagonId = generateId();
+        const newPentagon = {
+          id: pentagonId,
+          type: 'pentagon',
+          x: pos.x,
+          y: pos.y,
+          radius: 5, // Start with minimum visible radius
+          sides: 5,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+          draggable: false
+        };
+        setShapes([...shapes, newPentagon]);
+        setIsDrawing(true);
+        break;
+        
+      case 'hexagon':
+        const hexagonId = generateId();
+        const newHexagon = {
+          id: hexagonId,
+          type: 'hexagon',
+          x: pos.x,
+          y: pos.y,
+          radius: 5, // Start with minimum visible radius
+          sides: 6,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+          draggable: false
+        };
+        setShapes([...shapes, newHexagon]);
+        setIsDrawing(true);
+        break;
+        
+      case 'octagon':
+        const octagonId = generateId();
+        const newOctagon = {
+          id: octagonId,
+          type: 'octagon',
+          x: pos.x,
+          y: pos.y,
+          radius: 5, // Start with minimum visible radius
+          sides: 8,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+          draggable: false
+        };
+        setShapes([...shapes, newOctagon]);
+        setIsDrawing(true);
+        break;
     }
   }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, shapes, onSelectionChange, canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition, addAction]);
   
@@ -316,7 +409,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     
     if (!isDrawing) return;
     
-    if (activeTool === 'rectangle' || activeTool === 'ellipse') {
+    if (activeTool === 'rectangle' || activeTool === 'ellipse' || activeTool === 'triangle' || activeTool === 'star' || activeTool === 'pentagon' || activeTool === 'hexagon' || activeTool === 'octagon') {
       const lastShape = shapes[shapes.length - 1];
       if (!lastShape) return;
       
@@ -331,12 +424,44 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         };
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'ellipse') {
+        // Get the starting point from the shape properties
+        const startX = lastShape.startX || lastShape.x;
+        const startY = lastShape.startY || lastShape.y;
+        
+        // Calculate width and height
+        const width = Math.abs(pos.x - startX);
+        const height = Math.abs(pos.y - startY);
+        
         const updatedShape = {
           ...lastShape,
-          radiusX: Math.abs(pos.x - startX) / 2,
-          radiusY: Math.abs(pos.y - startY) / 2,
-          x: (startX + pos.x) / 2,
-          y: (startY + pos.y) / 2
+          radiusX: width / 2,
+          radiusY: height / 2,
+          x: startX + (pos.x - startX) / 2, // Center X
+          y: startY + (pos.y - startY) / 2  // Center Y
+        };
+        setShapes([...shapes.slice(0, -1), updatedShape]);
+      } else if (activeTool === 'triangle' || activeTool === 'pentagon' || activeTool === 'hexagon' || activeTool === 'octagon') {
+        // For regular polygons, calculate radius based on distance from start point to mouse
+        const distance = Math.sqrt(Math.pow(pos.x - startX, 2) + Math.pow(pos.y - startY, 2));
+        const radius = Math.max(distance, 5); // Minimum radius of 5 pixels for visibility
+        const updatedShape = {
+          ...lastShape,
+          radius: radius,
+          x: startX, // Keep center at start point
+          y: startY  // Keep center at start point
+        };
+        setShapes([...shapes.slice(0, -1), updatedShape]);
+      } else if (activeTool === 'star') {
+        // For star, calculate both inner and outer radius
+        const distance = Math.sqrt(Math.pow(pos.x - startX, 2) + Math.pow(pos.y - startY, 2));
+        const outerRadius = Math.max(distance, 10); // Minimum outer radius of 10 pixels
+        const innerRadius = Math.max(outerRadius * 0.4, 4); // Inner radius is 40% of outer, minimum 4 pixels
+        const updatedShape = {
+          ...lastShape,
+          innerRadius: innerRadius,
+          outerRadius: outerRadius,
+          x: startX, // Keep center at start point
+          y: startY  // Keep center at start point
         };
         setShapes([...shapes.slice(0, -1), updatedShape]);
       }
@@ -391,7 +516,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     }
     
     // Make shapes draggable after creation when in select mode and add to history
-    if (activeTool === 'rectangle' || activeTool === 'ellipse') {
+    if (activeTool === 'rectangle' || activeTool === 'ellipse' || activeTool === 'triangle' || activeTool === 'star' || activeTool === 'pentagon' || activeTool === 'hexagon' || activeTool === 'octagon') {
       const lastShapeIndex = shapes.length - 1;
       const lastShape = shapes[lastShapeIndex];
       
@@ -418,6 +543,52 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             y: lastShape.y, 
             radiusX: lastShape.radiusX, 
             radiusY: lastShape.radiusY 
+          });
+          
+          // Clean up temporary properties that aren't needed after creation
+          const cleanedShapes = shapes.map(shape => {
+            if (shape.id === lastShape.id) {
+              const { startX, startY, ...cleanedShape } = shape;
+              return cleanedShape;
+            }
+            return shape;
+          });
+          setShapes(cleanedShapes);
+        } else if (activeTool === 'triangle') {
+          addAction('create_triangle', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            radius: lastShape.radius,
+            sides: lastShape.sides
+          });
+        } else if (activeTool === 'star') {
+          addAction('create_star', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            innerRadius: lastShape.innerRadius,
+            outerRadius: lastShape.outerRadius,
+            numPoints: lastShape.numPoints
+          });
+        } else if (activeTool === 'pentagon') {
+          addAction('create_pentagon', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            radius: lastShape.radius,
+            sides: lastShape.sides
+          });
+        } else if (activeTool === 'hexagon') {
+          addAction('create_hexagon', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            radius: lastShape.radius,
+            sides: lastShape.sides
+          });
+        } else if (activeTool === 'octagon') {
+          addAction('create_octagon', [lastShape.id], { 
+            x: lastShape.x, 
+            y: lastShape.y, 
+            radius: lastShape.radius,
+            sides: lastShape.sides
           });
         }
       }
@@ -491,6 +662,72 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         return <Rect {...commonProps} {...obj} />;
       case 'ellipse':
         return <Ellipse {...commonProps} {...obj} />;
+      case 'triangle':
+        return (
+          <RegularPolygon
+            {...commonProps}
+            x={obj.x}
+            y={obj.y}
+            sides={3}
+            radius={Math.max(obj.radius || 5, 5)} // Ensure minimum radius
+            fill={obj.fill}
+            stroke={obj.stroke}
+            strokeWidth={obj.strokeWidth}
+          />
+        );
+      case 'pentagon':
+        return (
+          <RegularPolygon
+            {...commonProps}
+            x={obj.x}
+            y={obj.y}
+            sides={5}
+            radius={Math.max(obj.radius || 5, 5)} // Ensure minimum radius
+            fill={obj.fill}
+            stroke={obj.stroke}
+            strokeWidth={obj.strokeWidth}
+          />
+        );
+      case 'hexagon':
+        return (
+          <RegularPolygon
+            {...commonProps}
+            x={obj.x}
+            y={obj.y}
+            sides={6}
+            radius={Math.max(obj.radius || 5, 5)} // Ensure minimum radius
+            fill={obj.fill}
+            stroke={obj.stroke}
+            strokeWidth={obj.strokeWidth}
+          />
+        );
+      case 'octagon':
+        return (
+          <RegularPolygon
+            {...commonProps}
+            x={obj.x}
+            y={obj.y}
+            sides={8}
+            radius={Math.max(obj.radius || 5, 5)} // Ensure minimum radius
+            fill={obj.fill}
+            stroke={obj.stroke}
+            strokeWidth={obj.strokeWidth}
+          />
+        );
+      case 'star':
+        return (
+          <Star
+            {...commonProps}
+            x={obj.x}
+            y={obj.y}
+            numPoints={obj.numPoints || 5}
+            innerRadius={Math.max(obj.innerRadius || 4, 4)} // Ensure minimum inner radius
+            outerRadius={Math.max(obj.outerRadius || 10, 10)} // Ensure minimum outer radius
+            fill={obj.fill}
+            stroke={obj.stroke}
+            strokeWidth={obj.strokeWidth}
+          />
+        );
       case 'line':
         return <Line {...commonProps} {...obj} />;
       case 'text':
