@@ -119,6 +119,12 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     return () => clearTimeout(timeoutId);
   }, [shapes, canvasScale, canvasX, canvasY, getCurrentState]);
   
+  // Helper to transform pointer position
+  const getTransformedPointer = (pos: {x: number, y: number}) => ({
+    x: (pos.x - canvasX) / canvasScale,
+    y: (pos.y - canvasY) / canvasScale
+  });
+
   // Handle crop handle mouse down
   const handleCropHandleMouseDown = useCallback((handleId: string) => {
     setDraggedHandle(handleId);
@@ -127,43 +133,43 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   // Handle crop handle mouse move
   const handleCropHandleMouseMove = useCallback((pos: { x: number; y: number }) => {
     if (!cropRect || !draggedHandle) return;
-
+    const tpos = getTransformedPointer(pos);
     const newRect = { ...cropRect };
 
     switch (draggedHandle) {
       case 'top-left':
-        newRect.x = pos.x;
-        newRect.y = pos.y;
-        newRect.width = cropRect.x + cropRect.width - pos.x;
-        newRect.height = cropRect.y + cropRect.height - pos.y;
+        newRect.x = tpos.x;
+        newRect.y = tpos.y;
+        newRect.width = cropRect.x + cropRect.width - tpos.x;
+        newRect.height = cropRect.y + cropRect.height - tpos.y;
         break;
       case 'top-right':
-        newRect.y = pos.y;
-        newRect.width = pos.x - cropRect.x;
-        newRect.height = cropRect.y + cropRect.height - pos.y;
+        newRect.y = tpos.y;
+        newRect.width = tpos.x - cropRect.x;
+        newRect.height = cropRect.y + cropRect.height - tpos.y;
         break;
       case 'bottom-left':
-        newRect.x = pos.x;
-        newRect.width = cropRect.x + cropRect.width - pos.x;
-        newRect.height = pos.y - cropRect.y;
+        newRect.x = tpos.x;
+        newRect.width = cropRect.x + cropRect.width - tpos.x;
+        newRect.height = tpos.y - cropRect.y;
         break;
       case 'bottom-right':
-        newRect.width = pos.x - cropRect.x;
-        newRect.height = pos.y - cropRect.y;
+        newRect.width = tpos.x - cropRect.x;
+        newRect.height = tpos.y - cropRect.y;
         break;
       case 'top':
-        newRect.y = pos.y;
-        newRect.height = cropRect.y + cropRect.height - pos.y;
+        newRect.y = tpos.y;
+        newRect.height = cropRect.y + cropRect.height - tpos.y;
         break;
       case 'bottom':
-        newRect.height = pos.y - cropRect.y;
+        newRect.height = tpos.y - cropRect.y;
         break;
       case 'left':
-        newRect.x = pos.x;
-        newRect.width = cropRect.x + cropRect.width - pos.x;
+        newRect.x = tpos.x;
+        newRect.width = cropRect.x + cropRect.width - tpos.x;
         break;
       case 'right':
-        newRect.width = pos.x - cropRect.x;
+        newRect.width = tpos.x - cropRect.x;
         break;
     }
 
@@ -378,6 +384,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     const pos = stage.getPointerPosition();
     if (!pos) return;
     
+    const tpos = getTransformedPointer(pos);
+    
     // Check if we clicked on empty area
     const clickedOnEmpty = e.target === stage;
     
@@ -420,10 +428,10 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     if (activeTool === 'crop') {
       if (clickedOnEmpty) {
         // Start crop selection
-        setCropStartPoint({ x: pos.x, y: pos.y });
+        setCropStartPoint({ x: tpos.x, y: tpos.y });
         setCropRect({
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           width: 0,
           height: 0
         });
@@ -439,8 +447,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newRect = {
           id: rectId,
           type: 'rect',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           width: 0,
           height: 0,
           fill: fillColor,
@@ -458,12 +466,12 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newEllipse = {
           id: ellipseId,
           type: 'ellipse',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           radiusX: 0,
           radiusY: 0,
-          startX: pos.x, // Store the starting point for proper calculation
-          startY: pos.y, // Store the starting point for proper calculation
+          startX: tpos.x, // Store the starting point for proper calculation
+          startY: tpos.y, // Store the starting point for proper calculation
           fill: fillColor,
           stroke: strokeColor,
           strokeWidth: strokeWidth,
@@ -475,13 +483,13 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         break;
         
       case 'line':
-        setCurrentPath([pos.x, pos.y, pos.x, pos.y]);
+        setCurrentPath([tpos.x, tpos.y, tpos.x, tpos.y]);
         setIsDrawing(true);
         break;
         
       case 'pen':
       case 'brush':
-        setCurrentPath([pos.x, pos.y]);
+        setCurrentPath([tpos.x, tpos.y]);
         setIsDrawing(true);
         break;
         
@@ -492,8 +500,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           const newText = {
             id: textId,
             type: 'text',
-            x: pos.x,
-            y: pos.y,
+            x: tpos.x,
+            y: tpos.y,
             text: text,
             fontSize: fontSize,
             fontFamily: fontFamily,
@@ -502,7 +510,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           };
           setShapes([...shapes, newText]);
           // Add to history immediately for text
-          addAction('create_text', [textId], { text, position: { x: pos.x, y: pos.y } });
+          addAction('create_text', [textId], { text, position: { x: tpos.x, y: tpos.y } });
         }
         break;
         
@@ -512,7 +520,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         if (shape && shape.id()) {
           const shapeId = shape.id();
           setShapes(shapes.filter(s => s.id !== shapeId));
-          addAction('delete_object', [shapeId], { position: { x: pos.x, y: pos.y } });
+          addAction('delete_object', [shapeId], { position: { x: tpos.x, y: tpos.y } });
         }
         break;
 
@@ -521,8 +529,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newTriangle = {
           id: triangleId,
           type: 'triangle',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           radius: 5, // Start with minimum visible radius
           sides: 3,
           fill: fillColor,
@@ -539,8 +547,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newStar = {
           id: starId,
           type: 'star',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           innerRadius: 4, // Start with minimum visible inner radius
           outerRadius: 10, // Start with minimum visible outer radius
           numPoints: 5,
@@ -558,8 +566,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newPentagon = {
           id: pentagonId,
           type: 'pentagon',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           radius: 5, // Start with minimum visible radius
           sides: 5,
           fill: fillColor,
@@ -576,8 +584,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newHexagon = {
           id: hexagonId,
           type: 'hexagon',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           radius: 5, // Start with minimum visible radius
           sides: 6,
           fill: fillColor,
@@ -594,8 +602,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const newOctagon = {
           id: octagonId,
           type: 'octagon',
-          x: pos.x,
-          y: pos.y,
+          x: tpos.x,
+          y: tpos.y,
           radius: 5, // Start with minimum visible radius
           sides: 8,
           fill: fillColor,
@@ -617,6 +625,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
+    const tpos = getTransformedPointer(pos);
+
     // Handle panning
     if (isPanning) {
       const dx = pos.x - lastPanPoint.x;
@@ -634,12 +644,12 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     
     // Handle crop tool
     if (activeTool === 'crop' && isCropping && cropStartPoint) {
-      const width = pos.x - cropStartPoint.x;
-      const height = pos.y - cropStartPoint.y;
+      const width = tpos.x - cropStartPoint.x;
+      const height = tpos.y - cropStartPoint.y;
       
       // Ensure positive dimensions by adjusting x, y if necessary
-      const rectX = width < 0 ? pos.x : cropStartPoint.x;
-      const rectY = height < 0 ? pos.y : cropStartPoint.y;
+      const rectX = width < 0 ? tpos.x : cropStartPoint.x;
+      const rectY = height < 0 ? tpos.y : cropStartPoint.y;
       const rectWidth = Math.abs(width);
       const rectHeight = Math.abs(height);
       
@@ -664,8 +674,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       if (activeTool === 'rectangle') {
         const updatedShape = {
           ...lastShape,
-          width: pos.x - startX,
-          height: pos.y - startY
+          width: tpos.x - startX,
+          height: tpos.y - startY
         };
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'ellipse') {
@@ -674,20 +684,20 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         const startY = lastShape.startY || lastShape.y;
         
         // Calculate width and height
-        const width = Math.abs(pos.x - startX);
-        const height = Math.abs(pos.y - startY);
+        const width = Math.abs(tpos.x - startX);
+        const height = Math.abs(tpos.y - startY);
         
         const updatedShape = {
           ...lastShape,
           radiusX: width / 2,
           radiusY: height / 2,
-          x: startX + (pos.x - startX) / 2, // Center X
-          y: startY + (pos.y - startY) / 2  // Center Y
+          x: startX + (tpos.x - startX) / 2, // Center X
+          y: startY + (tpos.y - startY) / 2  // Center Y
         };
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'triangle' || activeTool === 'pentagon' || activeTool === 'hexagon' || activeTool === 'octagon') {
         // For regular polygons, calculate radius based on distance from start point to mouse
-        const distance = Math.sqrt(Math.pow(pos.x - startX, 2) + Math.pow(pos.y - startY, 2));
+        const distance = Math.sqrt(Math.pow(tpos.x - startX, 2) + Math.pow(tpos.y - startY, 2));
         const radius = Math.max(distance, 5); // Minimum radius of 5 pixels for visibility
         const updatedShape = {
           ...lastShape,
@@ -698,7 +708,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'star') {
         // For star, calculate both inner and outer radius
-        const distance = Math.sqrt(Math.pow(pos.x - startX, 2) + Math.pow(pos.y - startY, 2));
+        const distance = Math.sqrt(Math.pow(tpos.x - startX, 2) + Math.pow(tpos.y - startY, 2));
         const outerRadius = Math.max(distance, 10); // Minimum outer radius of 10 pixels
         const innerRadius = Math.max(outerRadius * 0.4, 4); // Inner radius is 40% of outer, minimum 4 pixels
         const updatedShape = {
@@ -711,9 +721,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes.slice(0, -1), updatedShape]);
       }
     } else if (activeTool === 'line') {
-      setCurrentPath([currentPath[0], currentPath[1], pos.x, pos.y]);
+      setCurrentPath([currentPath[0], currentPath[1], tpos.x, tpos.y]);
     } else if (activeTool === 'pen' || activeTool === 'brush') {
-      setCurrentPath([...currentPath, pos.x, pos.y]);
+      setCurrentPath([...currentPath, tpos.x, tpos.y]);
     } else if (activeTool === 'eraser') {
       const shape = stage.getIntersection(pos);
       if (shape && shape.id()) {
