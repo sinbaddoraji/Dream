@@ -6,6 +6,11 @@ import {
   ChevronRight,
   Square,
   Circle,
+  Triangle,
+  Star,
+  Hexagon,
+  Pentagon,
+  Octagon,
   Minus,
   Type,
   Pen,
@@ -14,6 +19,7 @@ import {
   Trash2,
   Move,
   X,
+  Crop,
   Clock,
   ChevronDown,
   ChevronRight as ChevronRightIcon
@@ -25,6 +31,11 @@ import type { DrawAction, DrawActionType } from '../../types/history';
 const ACTION_ICONS: Record<DrawActionType, any> = {
   create_rectangle: Square,
   create_ellipse: Circle,
+  create_triangle: Triangle,
+  create_star: Star,
+  create_pentagon: Pentagon,
+  create_hexagon: Hexagon,
+  create_octagon: Octagon,
   create_line: Minus,
   create_text: Type,
   create_pen_stroke: Pen,
@@ -33,6 +44,7 @@ const ACTION_ICONS: Record<DrawActionType, any> = {
   delete_object: Trash2,
   transform_object: Move,
   move_object: Move,
+  crop_canvas: Crop,
   clear_canvas: X
 };
 

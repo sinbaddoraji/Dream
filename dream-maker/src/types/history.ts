@@ -28,6 +28,7 @@ export type DrawActionType =
   | 'delete_object'
   | 'transform_object'
   | 'move_object'
+  | 'crop_canvas'
   | 'clear_canvas';
 
 export interface HistoryState {
@@ -47,6 +48,7 @@ export const ACTION_ICONS: Record<DrawActionType, string> = {
   delete_object: 'Trash2',
   transform_object: 'Move',
   move_object: 'Move',
+  crop_canvas: 'Crop',
   clear_canvas: 'X',
   create_triangle: "Triangle",
   create_star: "Star",
@@ -66,6 +68,7 @@ export const ACTION_DESCRIPTIONS: Record<DrawActionType, string> = {
   delete_object: 'Deleted object',
   transform_object: 'Transformed object',
   move_object: 'Moved object',
+  crop_canvas: 'Cropped canvas',
   clear_canvas: 'Cleared canvas',
   create_triangle: "Created triangle",
   create_star: "Created star",

@@ -1,10 +1,12 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Ellipse, Line, Text, Transformer, Image, RegularPolygon, Star } from 'react-konva';
+import { Stage, Layer, Rect, Ellipse, Line, Text, Transformer, Image, RegularPolygon, Star, Circle } from 'react-konva';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useTheme } from '../../hooks/useTheme';
 import { useDesignStore } from '../../store/designStore';
 import { useDrawHistory } from '../../hooks/useDrawHistory';
+import { PersistenceService, type CanvasState } from '../../services/PersistenceService';
+import { CropConfirmDialog } from '../Modals/CropConfirmDialog';
 
 interface KonvaCanvasProps {
   activeTool: string;
@@ -41,10 +43,210 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [cropRect, setCropRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropStartPoint, setCropStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [draggedHandle, setDraggedHandle] = useState<string | null>(null);
+  const [showCropConfirm, setShowCropConfirm] = useState(false);
+  const [pendingCropData, setPendingCropData] = useState<{
+    keptShapes: any[];
+    removedShapes: any[];
+    cropBounds: any;
+  } | null>(null);
   
   // Helper function to generate unique IDs
   const generateId = () => Math.random().toString(36).substring(2, 9);
   
+  // Get current canvas state for persistence
+  const getCurrentState = useCallback((): CanvasState => ({
+    shapes,
+    objects,
+    canvasScale,
+    canvasX,
+    canvasY,
+    timestamp: Date.now()
+  }), [shapes, objects, canvasScale, canvasX, canvasY]);
+
+  // Load saved state on component mount
+  useEffect(() => {
+    const savedState = PersistenceService.loadState();
+    if (savedState && window.confirm('A previous session was found. Would you like to restore it?')) {
+      // Restore shapes
+      setShapes(savedState.shapes || []);
+      
+      // Restore canvas position and scale
+      setCanvasScale(savedState.canvasScale || 1);
+      setCanvasPosition(savedState.canvasX || 0, savedState.canvasY || 0);
+      
+      console.log('Canvas state restored from previous session');
+    }
+  }, [setCanvasScale, setCanvasPosition]);
+
+  // Start auto-save when component mounts
+  useEffect(() => {
+    PersistenceService.startAutoSave(getCurrentState);
+    
+    return () => {
+      PersistenceService.stopAutoSave();
+    };
+  }, [getCurrentState]);
+
+  // Save state before page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      PersistenceService.manualSave(getCurrentState);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [getCurrentState]);
+
+  // Save state when shapes or canvas properties change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      PersistenceService.manualSave(getCurrentState);
+    }, 1000); // Debounce saves by 1 second
+
+    return () => clearTimeout(timeoutId);
+  }, [shapes, canvasScale, canvasX, canvasY, getCurrentState]);
+  
+  // Handle crop handle mouse down
+  const handleCropHandleMouseDown = useCallback((handleId: string) => {
+    setDraggedHandle(handleId);
+  }, []);
+
+  // Handle crop handle mouse move
+  const handleCropHandleMouseMove = useCallback((pos: { x: number; y: number }) => {
+    if (!cropRect || !draggedHandle) return;
+
+    const newRect = { ...cropRect };
+
+    switch (draggedHandle) {
+      case 'top-left':
+        newRect.x = pos.x;
+        newRect.y = pos.y;
+        newRect.width = cropRect.x + cropRect.width - pos.x;
+        newRect.height = cropRect.y + cropRect.height - pos.y;
+        break;
+      case 'top-right':
+        newRect.y = pos.y;
+        newRect.width = pos.x - cropRect.x;
+        newRect.height = cropRect.y + cropRect.height - pos.y;
+        break;
+      case 'bottom-left':
+        newRect.x = pos.x;
+        newRect.width = cropRect.x + cropRect.width - pos.x;
+        newRect.height = pos.y - cropRect.y;
+        break;
+      case 'bottom-right':
+        newRect.width = pos.x - cropRect.x;
+        newRect.height = pos.y - cropRect.y;
+        break;
+      case 'top':
+        newRect.y = pos.y;
+        newRect.height = cropRect.y + cropRect.height - pos.y;
+        break;
+      case 'bottom':
+        newRect.height = pos.y - cropRect.y;
+        break;
+      case 'left':
+        newRect.x = pos.x;
+        newRect.width = cropRect.x + cropRect.width - pos.x;
+        break;
+      case 'right':
+        newRect.width = pos.x - cropRect.x;
+        break;
+    }
+
+    // Ensure minimum size
+    if (newRect.width < 10) newRect.width = 10;
+    if (newRect.height < 10) newRect.height = 10;
+
+    setCropRect(newRect);
+  }, [cropRect, draggedHandle]);
+
+  // Handle crop handle mouse up
+  const handleCropHandleMouseUp = useCallback(() => {
+    setDraggedHandle(null);
+  }, []);
+  
+  // Render crop handles
+  const renderCropHandles = () => {
+    if (!cropRect || activeTool !== 'crop') return null;
+
+    const handles = [
+      { id: 'top-left', x: cropRect.x, y: cropRect.y },
+      { id: 'top-right', x: cropRect.x + cropRect.width, y: cropRect.y },
+      { id: 'bottom-left', x: cropRect.x, y: cropRect.y + cropRect.height },
+      { id: 'bottom-right', x: cropRect.x + cropRect.width, y: cropRect.y + cropRect.height },
+      { id: 'top', x: cropRect.x + cropRect.width / 2, y: cropRect.y },
+      { id: 'bottom', x: cropRect.x + cropRect.width / 2, y: cropRect.y + cropRect.height },
+      { id: 'left', x: cropRect.x, y: cropRect.y + cropRect.height / 2 },
+      { id: 'right', x: cropRect.x + cropRect.width, y: cropRect.y + cropRect.height / 2 },
+    ];
+
+    return handles.map(handle => (
+      <Circle
+        key={handle.id}
+        x={handle.x}
+        y={handle.y}
+        radius={6}
+        fill="#0066ff"
+        stroke="#ffffff"
+        strokeWidth={2}
+        onMouseDown={(_e: KonvaEventObject<MouseEvent>) => {
+          // Don't cancel bubble for mouse down - let Stage handle it too
+          handleCropHandleMouseDown(handle.id);
+        }}
+        onMouseMove={(e: KonvaEventObject<MouseEvent>) => {
+          if (draggedHandle === handle.id) {
+            const stage = e.target.getStage();
+            if (stage) {
+              const pos = stage.getPointerPosition();
+              if (pos) {
+                handleCropHandleMouseMove(pos);
+              }
+            }
+          }
+        }}
+        onMouseUp={(_e: KonvaEventObject<MouseEvent>) => {
+          // Don't cancel bubble for mouse up - let Stage handle it too
+          handleCropHandleMouseUp();
+        }}
+        style={{ cursor: getHandleCursor(handle.id) }}
+      />
+    ));
+  };
+
+  // Get cursor for crop handles
+  const getHandleCursor = (handleId: string): string => {
+    switch (handleId) {
+      case 'top-left':
+      case 'bottom-right':
+        return 'nw-resize';
+      case 'top-right':
+      case 'bottom-left':
+        return 'ne-resize';
+      case 'top':
+      case 'bottom':
+        return 'ns-resize';
+      case 'left':
+      case 'right':
+        return 'ew-resize';
+      default:
+        return 'pointer';
+    }
+  };
+
   // Update canvas size when container resizes
   useEffect(() => {
     if (!containerRef.current) return;
@@ -130,6 +332,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       case 'select': return 'default';
       case 'hand': return 'grab';
       case 'text': return 'text';
+      case 'crop': return 'crosshair';
       case 'eyedropper': return 'crosshair';
       case 'zoom': return 'zoom-in';
       case 'pen':
@@ -209,6 +412,22 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       if (clickedOnEmpty) {
         setSelectedId(null);
         if (onSelectionChange) onSelectionChange([]);
+      }
+      return;
+    }
+    
+    // Handle crop tool
+    if (activeTool === 'crop') {
+      if (clickedOnEmpty) {
+        // Start crop selection
+        setCropStartPoint({ x: pos.x, y: pos.y });
+        setCropRect({
+          x: pos.x,
+          y: pos.y,
+          width: 0,
+          height: 0
+        });
+        setIsCropping(true);
       }
       return;
     }
@@ -406,6 +625,32 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       setLastPanPoint({ x: pos.x, y: pos.y });
       return;
     }
+
+    // Handle crop handle dragging
+    if (activeTool === 'crop' && draggedHandle) {
+      handleCropHandleMouseMove(pos);
+      return;
+    }
+    
+    // Handle crop tool
+    if (activeTool === 'crop' && isCropping && cropStartPoint) {
+      const width = pos.x - cropStartPoint.x;
+      const height = pos.y - cropStartPoint.y;
+      
+      // Ensure positive dimensions by adjusting x, y if necessary
+      const rectX = width < 0 ? pos.x : cropStartPoint.x;
+      const rectY = height < 0 ? pos.y : cropStartPoint.y;
+      const rectWidth = Math.abs(width);
+      const rectHeight = Math.abs(height);
+      
+      setCropRect({
+        x: rectX,
+        y: rectY,
+        width: rectWidth,
+        height: rectHeight
+      });
+      return;
+    }
     
     if (!isDrawing) return;
     
@@ -475,13 +720,26 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes(shapes.filter(s => s.id !== shape.id()));
       }
     }
-  }, [isDrawing, activeTool, shapes, currentPath, isPanning, lastPanPoint, canvasX, canvasY, setCanvasPosition]);
+  }, [isDrawing, activeTool, shapes, currentPath, isPanning, lastPanPoint, canvasX, canvasY, setCanvasPosition, handleCropHandleMouseMove, draggedHandle, isCropping, cropStartPoint]);
   
   // Handle stage mouse up
   const handleStageMouseUp = useCallback(() => {
     // Stop panning
     if (isPanning) {
       setIsPanning(false);
+      return;
+    }
+
+    // Handle crop handle release
+    if (draggedHandle) {
+      handleCropHandleMouseUp();
+      return;
+    }
+    
+    // Handle crop tool completion
+    if (activeTool === 'crop' && isCropping) {
+      setIsCropping(false);
+      // Crop rectangle is now ready - user can press Enter to apply or Escape to cancel
       return;
     }
     
@@ -593,7 +851,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         }
       }
     }
-  }, [isDrawing, activeTool, currentPath, shapes, strokeColor, fillColor, strokeWidth, isPanning, addAction]);
+  }, [isDrawing, activeTool, currentPath, shapes, strokeColor, fillColor, strokeWidth, isPanning, addAction, draggedHandle, handleCropHandleMouseUp, isCropping]);
   
   // Handle shape click for selection
   const handleShapeClick = useCallback((e: KonvaEventObject<MouseEvent>, shapeId: string) => {
@@ -639,6 +897,252 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     }
   }, [selectedId]);
   
+  // Handle keyboard events for crop tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (activeTool === 'crop' && cropRect) {
+        if (e.key === 'Enter') {
+          // Apply crop
+          applyCrop();
+        } else if (e.key === 'Escape') {
+          // Cancel crop
+          cancelCrop();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTool, cropRect]);
+  
+  // Apply crop function
+  const applyCrop = useCallback(() => {
+    if (!cropRect) return;
+    
+    // Calculate crop bounds
+    const cropBounds = {
+      x: Math.min(cropRect.x, cropRect.x + cropRect.width),
+      y: Math.min(cropRect.y, cropRect.y + cropRect.height),
+      width: Math.abs(cropRect.width),
+      height: Math.abs(cropRect.height)
+    };
+    
+    // Calculate which shapes will be kept vs removed
+    const keptShapes = shapes.filter(shape => {
+      let shapeBounds: { x: number; y: number; width: number; height: number } | null = null;
+      
+      switch (shape.type) {
+        case 'rect':
+          shapeBounds = {
+            x: shape.x || 0,
+            y: shape.y || 0,
+            width: shape.width || 0,
+            height: shape.height || 0
+          };
+          break;
+        case 'ellipse':
+          shapeBounds = {
+            x: (shape.x || 0) - (shape.radiusX || 0),
+            y: (shape.y || 0) - (shape.radiusY || 0),
+            width: (shape.radiusX || 0) * 2,
+            height: (shape.radiusY || 0) * 2
+          };
+          break;
+        case 'triangle':
+        case 'pentagon':
+        case 'hexagon':
+        case 'octagon':
+          shapeBounds = {
+            x: (shape.x || 0) - (shape.radius || 0),
+            y: (shape.y || 0) - (shape.radius || 0),
+            width: (shape.radius || 0) * 2,
+            height: (shape.radius || 0) * 2
+          };
+          break;
+        case 'star':
+          shapeBounds = {
+            x: (shape.x || 0) - (shape.outerRadius || 0),
+            y: (shape.y || 0) - (shape.outerRadius || 0),
+            width: (shape.outerRadius || 0) * 2,
+            height: (shape.outerRadius || 0) * 2
+          };
+          break;
+        case 'line':
+          if (shape.points && shape.points.length >= 4) {
+            const points = shape.points as number[];
+            const xCoords = points.filter((_, i) => i % 2 === 0);
+            const yCoords = points.filter((_, i) => i % 2 === 1);
+            const minX = Math.min(...xCoords);
+            const maxX = Math.max(...xCoords);
+            const minY = Math.min(...yCoords);
+            const maxY = Math.max(...yCoords);
+            shapeBounds = {
+              x: minX,
+              y: minY,
+              width: maxX - minX,
+              height: maxY - minY
+            };
+          }
+          break;
+        case 'text':
+          // Approximate text bounds (this could be improved with actual text measurement)
+          const textWidth = (shape.text || '').length * (shape.fontSize || 16) * 0.6;
+          const textHeight = shape.fontSize || 16;
+          shapeBounds = {
+            x: shape.x || 0,
+            y: shape.y || 0,
+            width: textWidth,
+            height: textHeight
+          };
+          break;
+        case 'image':
+          shapeBounds = {
+            x: shape.x || 0,
+            y: shape.y || 0,
+            width: shape.width || 0,
+            height: shape.height || 0
+          };
+          break;
+      }
+      
+      if (shapeBounds) {
+        // Check if shape intersects with crop area
+        const intersects = !(
+          shapeBounds.x + shapeBounds.width < cropBounds.x ||
+          shapeBounds.x > cropBounds.x + cropBounds.width ||
+          shapeBounds.y + shapeBounds.height < cropBounds.y ||
+          shapeBounds.y > cropBounds.y + cropBounds.height
+        );
+        
+        return intersects;
+      }
+      
+      return false; // Remove shapes we can't determine bounds for
+    });
+    
+    const removedShapes = shapes.filter(shape => !keptShapes.includes(shape));
+    
+    // Always show confirmation dialog before cropping
+    setPendingCropData({ keptShapes, removedShapes, cropBounds });
+    setShowCropConfirm(true);
+  }, [cropRect, shapes]);
+
+  // Perform the actual crop operation
+  const performCrop = useCallback((keptShapes: any[], removedShapes: any[], cropBounds: any) => {
+    // Transform kept shapes to adjust for new canvas origin
+    const transformedShapes = keptShapes.map(shape => {
+      const transformedShape = { ...shape };
+      
+      // Adjust position based on crop bounds
+      if (shape.x !== undefined) {
+        transformedShape.x = shape.x - cropBounds.x;
+      }
+      if (shape.y !== undefined) {
+        transformedShape.y = shape.y - cropBounds.y;
+      }
+      
+      // Handle line points
+      if (shape.type === 'line' && shape.points) {
+        transformedShape.points = shape.points.map((point: number, index: number) => {
+          if (index % 2 === 0) {
+            // X coordinate
+            return point - cropBounds.x;
+          } else {
+            // Y coordinate
+            return point - cropBounds.y;
+          }
+        });
+      }
+      
+      return transformedShape;
+    });
+    
+    setShapes(transformedShapes);
+    
+    // Transform objects in the design store as well
+    const { removeObject, updateObject } = useDesignStore.getState();
+    
+    // Remove objects outside crop bounds
+    removedShapes.forEach(shape => removeObject(shape.id));
+    
+    // Transform remaining objects
+    transformedShapes.forEach(shape => {
+      if (objects[shape.id]) {
+        updateObject(shape.id, {
+          ...objects[shape.id],
+          x: shape.x,
+          y: shape.y,
+          ...(shape.points && { points: shape.points })
+        });
+      }
+    });
+    
+    // Calculate optimal scale to fit the cropped content in the viewport
+    const cropWidth = Math.abs(cropBounds.width);
+    const cropHeight = Math.abs(cropBounds.height);
+    
+    // Leave some padding around the cropped content
+    const padding = 50;
+    const viewportWidth = canvasSize.width - padding * 2;
+    const viewportHeight = canvasSize.height - padding * 2;
+    
+    // Calculate scale to fit the cropped area in the viewport
+    const scaleX = viewportWidth / cropWidth;
+    const scaleY = viewportHeight / cropHeight;
+    const optimalScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+    
+    // Center the cropped content in the viewport
+    const centerX = (canvasSize.width - cropWidth * optimalScale) / 2;
+    const centerY = (canvasSize.height - cropHeight * optimalScale) / 2;
+    
+    // Apply the calculated scale and position
+    setCanvasScale(optimalScale);
+    setCanvasPosition(centerX, centerY);
+    
+    // Add to history
+    addAction('crop_canvas', [], { 
+      cropBounds,
+      removedObjects: removedShapes.map(s => s.id),
+      newCanvasScale: optimalScale,
+      newCanvasPosition: { x: centerX, y: centerY }
+    });
+    
+    // Clear crop
+    setCropRect(null);
+    setCropStartPoint(null);
+  }, [canvasScale, canvasSize, setCanvasPosition, setCanvasScale, addAction, objects]);
+
+  // Handle crop confirmation
+  const handleCropConfirm = useCallback(() => {
+    if (pendingCropData) {
+      performCrop(pendingCropData.keptShapes, pendingCropData.removedShapes, pendingCropData.cropBounds);
+    }
+    setShowCropConfirm(false);
+    setPendingCropData(null);
+  }, [pendingCropData, performCrop]);
+
+  // Handle crop cancellation
+  const handleCropCancel = useCallback(() => {
+    setShowCropConfirm(false);
+    setPendingCropData(null);
+  }, []);
+  
+  // Cancel crop function
+  const cancelCrop = useCallback(() => {
+    setCropRect(null);
+    setCropStartPoint(null);
+    setIsCropping(false);
+  }, []);
+  
+  // Clean up crop state when tool changes
+  useEffect(() => {
+    if (activeTool !== 'crop') {
+      setCropRect(null);
+      setCropStartPoint(null);
+      setIsCropping(false);
+    }
+  }, [activeTool]);
+
   // Render object based on type
   const renderObject = (obj: any) => {
     const commonProps = {
@@ -798,10 +1302,38 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             />
           )}
           
+          {/* Render crop rectangle */}
+          {activeTool === 'crop' && cropRect && (
+            <Rect
+              x={cropRect.x}
+              y={cropRect.y}
+              width={cropRect.width}
+              height={cropRect.height}
+              fill="rgba(0, 102, 255, 0.3)"
+              stroke="#0066ff"
+              strokeWidth={2}
+              dash={[5, 5]}
+            />
+          )}
+
+          {/* Render crop handles */}
+          {renderCropHandles()}
+          
           {/* Transformer for selected shapes */}
           {activeTool === 'select' && <Transformer ref={transformerRef} />}
         </Layer>
       </Stage>
+      
+      {/* Crop confirmation dialog */}
+      <CropConfirmDialog
+        isOpen={showCropConfirm}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+        objectCount={pendingCropData?.removedShapes.length || 0}
+        keptObjectCount={pendingCropData?.keptShapes.length || 0}
+        cropWidth={pendingCropData?.cropBounds.width || 0}
+        cropHeight={pendingCropData?.cropBounds.height || 0}
+      />
     </div>
   );
 }
