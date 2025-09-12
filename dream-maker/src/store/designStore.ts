@@ -80,6 +80,17 @@ interface DesignStore {
   strokeWidth: number;
   fontSize: number;
   fontFamily: string;
+  fontWeight: string;
+  fontStyle: string;
+  textDecoration: string;
+  textAlign: string;
+  lineHeight: number;
+  letterSpacing: number;
+  textShadowColor: string;
+  textShadowBlur: number;
+  textShadowOffsetX: number;
+  textShadowOffsetY: number;
+  textShadowOpacity: number;
   
   // Objects and selection
   objects: Record<string, CanvasObject>;
@@ -118,6 +129,17 @@ interface DesignStore {
   setStrokeWidth: (width: number) => void;
   setFontSize: (size: number) => void;
   setFontFamily: (family: string) => void;
+  setFontWeight: (weight: string) => void;
+  setFontStyle: (style: string) => void;
+  setTextDecoration: (decoration: string) => void;
+  setTextAlign: (align: string) => void;
+  setLineHeight: (height: number) => void;
+  setLetterSpacing: (spacing: number) => void;
+  setTextShadowColor: (color: string) => void;
+  setTextShadowBlur: (blur: number) => void;
+  setTextShadowOffsetX: (offsetX: number) => void;
+  setTextShadowOffsetY: (offsetY: number) => void;
+  setTextShadowOpacity: (opacity: number) => void;
   
   // Object management
   addObject: (object: CanvasObject) => void;
@@ -202,6 +224,17 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   strokeWidth: 2,
   fontSize: 16,
   fontFamily: 'Arial',
+  fontWeight: 'normal',
+  fontStyle: 'normal',
+  textDecoration: '',
+  textAlign: 'left',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  textShadowColor: '#000000',
+  textShadowBlur: 0,
+  textShadowOffsetX: 0,
+  textShadowOffsetY: 0,
+  textShadowOpacity: 0.5,
   objects: {},
   groups: {},
   selection: {
@@ -221,6 +254,17 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
   setStrokeWidth: (width) => set({ strokeWidth: width }),
   setFontSize: (size) => set({ fontSize: size }),
   setFontFamily: (family) => set({ fontFamily: family }),
+  setFontWeight: (weight) => set({ fontWeight: weight }),
+  setFontStyle: (style) => set({ fontStyle: style }),
+  setTextDecoration: (decoration) => set({ textDecoration: decoration }),
+  setTextAlign: (align) => set({ textAlign: align }),
+  setLineHeight: (height) => set({ lineHeight: height }),
+  setLetterSpacing: (spacing) => set({ letterSpacing: spacing }),
+  setTextShadowColor: (color) => set({ textShadowColor: color }),
+  setTextShadowBlur: (blur) => set({ textShadowBlur: blur }),
+  setTextShadowOffsetX: (offsetX) => set({ textShadowOffsetX: offsetX }),
+  setTextShadowOffsetY: (offsetY) => set({ textShadowOffsetY: offsetY }),
+  setTextShadowOpacity: (opacity) => set({ textShadowOpacity: opacity }),
   
   // Object management
   addObject: (object) => set((state) => {
@@ -535,6 +579,17 @@ export const useDesignStore = create<DesignStore>((set, get) => ({
       strokeWidth: 2,
       fontSize: 16,
       fontFamily: 'Arial',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textDecoration: '',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      textShadowColor: '#000000',
+      textShadowBlur: 0,
+      textShadowOffsetX: 0,
+      textShadowOffsetY: 0,
+      textShadowOpacity: 0.5,
     });
     FileService.clearAutoSave();
   },

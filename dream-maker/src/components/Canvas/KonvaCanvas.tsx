@@ -7,12 +7,53 @@ import { useDesignStore } from '../../store/designStore';
 import { useDrawHistory } from '../../hooks/useDrawHistory';
 import { PersistenceService, type CanvasState } from '../../services/PersistenceService';
 import { CropConfirmDialog } from '../Modals/CropConfirmDialog';
+import { TextEditor } from './TextEditor';
+
+interface ShapeObject {
+  id: string;
+  type: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  radiusX?: number;
+  radiusY?: number;
+  radius?: number;
+  startX?: number;
+  startY?: number;
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  textDecoration?: string;
+  align?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  draggable?: boolean;
+  padding?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+  points?: number[];
+  sides?: number;
+  numPoints?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  naturalWidth?: number;
+  naturalHeight?: number;
+}
 
 interface KonvaCanvasProps {
   activeTool: string;
   fillColor: string;
   strokeColor: string;
-  onSelectionChange?: (items: any[]) => void;
+  onSelectionChange?: (items: ShapeObject[]) => void;
 }
 
 export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionChange }: KonvaCanvasProps) {
@@ -20,6 +61,17 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const {
     fontSize,
     fontFamily,
+    fontWeight,
+    fontStyle,
+    textDecoration,
+    textAlign,
+    lineHeight,
+    letterSpacing,
+    textShadowColor,
+    textShadowBlur,
+    textShadowOffsetX,
+    textShadowOffsetY,
+    textShadowOpacity,
     strokeWidth,
     canvasScale,
     canvasX,
@@ -34,7 +86,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const layerRef = useRef<Konva.Layer>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   
-  const [shapes, setShapes] = useState<any[]>([]);
+  const [shapes, setShapes] = useState<ShapeObject[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<number[]>([]);
@@ -42,6 +94,10 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
+  
+  // Text editing state
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingTextNode, setEditingTextNode] = useState<unknown>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [cropRect, setCropRect] = useState<{
@@ -209,7 +265,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         fill="#0066ff"
         stroke="#ffffff"
         strokeWidth={2}
-        onMouseDown={(_e: KonvaEventObject<MouseEvent>) => {
+        onMouseDown={() => {
           // Don't cancel bubble for mouse down - let Stage handle it too
           handleCropHandleMouseDown(handle.id);
         }}
@@ -224,7 +280,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             }
           }
         }}
-        onMouseUp={(_e: KonvaEventObject<MouseEvent>) => {
+        onMouseUp={() => {
           // Don't cancel bubble for mouse up - let Stage handle it too
           handleCropHandleMouseUp();
         }}
@@ -442,7 +498,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
     
     // Start drawing based on active tool
     switch (activeTool) {
-      case 'rectangle':
+      case 'rectangle': {
         const rectId = generateId();
         const newRect = {
           id: rectId,
@@ -460,8 +516,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setIsDrawing(true);
         // Note: We'll add the history action when the drawing is completed
         break;
+      }
         
-      case 'ellipse':
+      case 'ellipse': {
         const ellipseId = generateId();
         const newEllipse = {
           id: ellipseId,
@@ -481,6 +538,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setIsDrawing(true);
         // Note: We'll add the history action when the drawing is completed
         break;
+      }
         
       case 'line':
         setCurrentPath([tpos.x, tpos.y, tpos.x, tpos.y]);
@@ -493,28 +551,51 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setIsDrawing(true);
         break;
         
-      case 'text':
-        const text = prompt('Enter text:', 'Text');
-        if (text) {
-          const textId = generateId();
-          const newText = {
-            id: textId,
-            type: 'text',
-            x: tpos.x,
-            y: tpos.y,
-            text: text,
-            fontSize: fontSize,
-            fontFamily: fontFamily,
-            fill: fillColor,
-            draggable: false
-          };
-          setShapes([...shapes, newText]);
-          // Add to history immediately for text
-          addAction('create_text', [textId], { text, position: { x: tpos.x, y: tpos.y } });
-        }
-        break;
+      case 'text': {
+        const textId = generateId();
+        const newText = {
+          id: textId,
+          type: 'text',
+          x: tpos.x,
+          y: tpos.y,
+          text: 'Double-click to edit',
+          fontSize: fontSize,
+          fontFamily: fontFamily,
+          fontWeight: fontWeight,
+          fontStyle: fontStyle,
+          textDecoration: textDecoration,
+          align: textAlign,
+          lineHeight: lineHeight,
+          letterSpacing: letterSpacing,
+          fill: fillColor,
+          stroke: strokeColor,
+          strokeWidth: strokeWidth > 0 ? strokeWidth * 0.5 : 0,
+          width: Math.max(200, fontSize * 10), // Minimum width for editing
+          padding: 4,
+          draggable: false,
+          // Text shadow properties
+          shadowColor: textShadowBlur > 0 ? textShadowColor : '',
+          shadowBlur: textShadowBlur,
+          shadowOffsetX: textShadowOffsetX,
+          shadowOffsetY: textShadowOffsetY,
+          shadowOpacity: textShadowOpacity
+        };
+        setShapes([...shapes, newText]);
         
-      case 'eraser':
+        // Immediately start editing the new text
+        setTimeout(() => {
+          const textNode = layerRef.current?.findOne(`#${textId}`);
+          if (textNode) {
+            setEditingTextId(textId);
+            setEditingTextNode(textNode);
+          }
+        }, 50);
+        
+        addAction('create_text', [textId], { text: 'Double-click to edit', position: { x: tpos.x, y: tpos.y } });
+        break;
+      }
+        
+      case 'eraser': {
         // Find and remove shape at this position
         const shape = stage.getIntersection(pos);
         if (shape && shape.id()) {
@@ -523,8 +604,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           addAction('delete_object', [shapeId], { position: { x: tpos.x, y: tpos.y } });
         }
         break;
+      }
 
-      case 'triangle':
+      case 'triangle': {
         const triangleId = generateId();
         const newTriangle = {
           id: triangleId,
@@ -541,8 +623,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes, newTriangle]);
         setIsDrawing(true);
         break;
+      }
         
-      case 'star':
+      case 'star': {
         const starId = generateId();
         const newStar = {
           id: starId,
@@ -560,8 +643,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes, newStar]);
         setIsDrawing(true);
         break;
+      }
         
-      case 'pentagon':
+      case 'pentagon': {
         const pentagonId = generateId();
         const newPentagon = {
           id: pentagonId,
@@ -578,8 +662,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes, newPentagon]);
         setIsDrawing(true);
         break;
+      }
         
-      case 'hexagon':
+      case 'hexagon': {
         const hexagonId = generateId();
         const newHexagon = {
           id: hexagonId,
@@ -596,8 +681,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes, newHexagon]);
         setIsDrawing(true);
         break;
+      }
         
-      case 'octagon':
+      case 'octagon': {
         const octagonId = generateId();
         const newOctagon = {
           id: octagonId,
@@ -614,8 +700,9 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes, newOctagon]);
         setIsDrawing(true);
         break;
+      }
     }
-  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, shapes, onSelectionChange, canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition, addAction]);
+  }, [activeTool, fillColor, strokeColor, strokeWidth, fontSize, fontFamily, fontWeight, fontStyle, textDecoration, textAlign, lineHeight, letterSpacing, textShadowColor, textShadowBlur, textShadowOffsetX, textShadowOffsetY, textShadowOpacity, shapes, onSelectionChange, canvasScale, canvasX, canvasY, setCanvasScale, setCanvasPosition, addAction]);
   
   // Handle stage mouse move
   const handleStageMouseMove = useCallback((e: KonvaEventObject<MouseEvent>) => {
@@ -668,8 +755,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       const lastShape = shapes[shapes.length - 1];
       if (!lastShape) return;
       
-      const startX = lastShape.x;
-      const startY = lastShape.y;
+      const startX = lastShape.x || 0;
+      const startY = lastShape.y || 0;
       
       if (activeTool === 'rectangle') {
         const updatedShape = {
@@ -680,8 +767,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'ellipse') {
         // Get the starting point from the shape properties
-        const startX = lastShape.startX || lastShape.x;
-        const startY = lastShape.startY || lastShape.y;
+        const startX = lastShape.startX || lastShape.x || 0;
+        const startY = lastShape.startY || lastShape.y || 0;
         
         // Calculate width and height
         const width = Math.abs(tpos.x - startX);
@@ -697,7 +784,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'triangle' || activeTool === 'pentagon' || activeTool === 'hexagon' || activeTool === 'octagon') {
         // For regular polygons, calculate radius based on distance from start point to mouse
-        const distance = Math.sqrt(Math.pow(tpos.x - startX, 2) + Math.pow(tpos.y - startY, 2));
+        const distance = Math.sqrt(Math.pow(tpos.x - (startX || 0), 2) + Math.pow(tpos.y - (startY || 0), 2));
         const radius = Math.max(distance, 5); // Minimum radius of 5 pixels for visibility
         const updatedShape = {
           ...lastShape,
@@ -708,7 +795,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
         setShapes([...shapes.slice(0, -1), updatedShape]);
       } else if (activeTool === 'star') {
         // For star, calculate both inner and outer radius
-        const distance = Math.sqrt(Math.pow(tpos.x - startX, 2) + Math.pow(tpos.y - startY, 2));
+        const distance = Math.sqrt(Math.pow(tpos.x - (startX || 0), 2) + Math.pow(tpos.y - (startY || 0), 2));
         const outerRadius = Math.max(distance, 10); // Minimum outer radius of 10 pixels
         const innerRadius = Math.max(outerRadius * 0.4, 4); // Inner radius is 40% of outer, minimum 4 pixels
         const updatedShape = {
@@ -816,7 +903,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           // Clean up temporary properties that aren't needed after creation
           const cleanedShapes = shapes.map(shape => {
             if (shape.id === lastShape.id) {
-              const { startX, startY, ...cleanedShape } = shape;
+              const { startX: _startX, startY: _startY, ...cleanedShape } = shape;
               return cleanedShape;
             }
             return shape;
@@ -874,6 +961,45 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       }
     }
   }, [activeTool, shapes, onSelectionChange]);
+
+  // Handle text double-click for editing
+  const handleTextDoubleClick = useCallback((e: KonvaEventObject<MouseEvent>, shapeId: string) => {
+    e.cancelBubble = true;
+    const shape = shapes.find(s => s.id === shapeId && s.type === 'text');
+    if (shape && activeTool === 'select') {
+      setEditingTextId(shapeId);
+      setEditingTextNode(e.target);
+    }
+  }, [shapes, activeTool]);
+
+  // Handle text editing
+  const handleTextChange = useCallback((newText: string) => {
+    if (!editingTextId) return;
+    
+    setShapes(shapes.map(shape => 
+      shape.id === editingTextId 
+        ? { ...shape, text: newText }
+        : shape
+    ));
+  }, [editingTextId, shapes]);
+
+  const handleTextEditClose = useCallback(() => {
+    if (editingTextId) {
+      // Make the shape draggable after editing
+      setShapes(shapes.map(shape => 
+        shape.id === editingTextId 
+          ? { ...shape, draggable: true }
+          : shape
+      ));
+      
+      addAction('edit_text', [editingTextId], { 
+        text: shapes.find(s => s.id === editingTextId)?.text 
+      });
+    }
+    
+    setEditingTextId(null);
+    setEditingTextNode(null);
+  }, [editingTextId, shapes, addAction]);
   
   // Handle transformer updates
   const handleTransformEnd = useCallback((e: KonvaEventObject<Event>, shapeId: string) => {
@@ -994,7 +1120,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             };
           }
           break;
-        case 'text':
+        case 'text': {
           // Approximate text bounds (this could be improved with actual text measurement)
           const textWidth = (shape.text || '').length * (shape.fontSize || 16) * 0.6;
           const textHeight = shape.fontSize || 16;
@@ -1005,7 +1131,8 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             height: textHeight
           };
           break;
-        case 'image':
+        }
+        case 'image': {
           shapeBounds = {
             x: shape.x || 0,
             y: shape.y || 0,
@@ -1013,6 +1140,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             height: shape.height || 0
           };
           break;
+        }
       }
       
       if (shapeBounds) {
@@ -1154,7 +1282,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
   }, [activeTool]);
 
   // Render object based on type
-  const renderObject = (obj: any) => {
+  const renderObject = (obj: any): React.ReactElement | null => {
     const commonProps = {
       key: obj.id,
       id: obj.id,
@@ -1245,8 +1373,16 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
       case 'line':
         return <Line {...commonProps} {...obj} />;
       case 'text':
-        return <Text {...commonProps} {...obj} />;
-      case 'image':
+        return (
+          <Text 
+            {...commonProps} 
+            {...obj} 
+            visible={editingTextId !== obj.id}
+            onDblClick={(e: KonvaEventObject<MouseEvent>) => handleTextDoubleClick(e, obj.id)}
+            onDblTap={(e: KonvaEventObject<MouseEvent>) => handleTextDoubleClick(e, obj.id)}
+          />
+        );
+      case 'image': {
         const imageElement = loadedImages.get(obj.id);
         if (!imageElement) return null;
         
@@ -1266,6 +1402,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
             height={height}
           />
         );
+      }
       default:
         return null;
     }
@@ -1298,7 +1435,7 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           {Object.values(objects).filter(obj => obj.visible).map(renderObject)}
           
           {/* Render legacy shapes if any exist */}
-          {shapes.map(renderObject)}
+          {shapes.map((shape) => renderObject(shape as any)).filter(Boolean)}
           
           {/* Render current drawing path */}
           {isDrawing && currentPath.length > 0 && (activeTool === 'line' || activeTool === 'pen' || activeTool === 'brush') && (
@@ -1333,6 +1470,16 @@ export function KonvaCanvas({ activeTool, fillColor, strokeColor, onSelectionCha
           {activeTool === 'select' && <Transformer ref={transformerRef} />}
         </Layer>
       </Stage>
+      
+      {/* Text editor overlay */}
+      {editingTextId && editingTextNode && (
+        <TextEditor
+          textNode={editingTextNode as any}
+          initialText={(shapes.find(s => s.id === editingTextId) as ShapeObject)?.text || ''}
+          onChange={handleTextChange}
+          onClose={handleTextEditClose}
+        />
+      )}
       
       {/* Crop confirmation dialog */}
       <CropConfirmDialog

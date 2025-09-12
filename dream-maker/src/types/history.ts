@@ -22,6 +22,7 @@ export type DrawActionType =
   | 'create_octagon'
   | 'create_line'
   | 'create_text'
+  | 'edit_text'
   | 'create_pen_stroke'
   | 'create_brush_stroke'
   | 'import_image'
@@ -42,6 +43,7 @@ export const ACTION_ICONS: Record<DrawActionType, string> = {
   create_ellipse: 'Circle',
   create_line: 'Minus',
   create_text: 'Type',
+  edit_text: 'Edit',
   create_pen_stroke: 'Pen',
   create_brush_stroke: 'Brush',
   import_image: 'Image',
@@ -62,6 +64,7 @@ export const ACTION_DESCRIPTIONS: Record<DrawActionType, string> = {
   create_ellipse: 'Created ellipse',
   create_line: 'Drew line',
   create_text: 'Added text',
+  edit_text: 'Edited text',
   create_pen_stroke: 'Pen stroke',
   create_brush_stroke: 'Brush stroke',
   import_image: 'Imported image',
